@@ -1,20 +1,32 @@
-import Categories from "@/components/store/categories";
-import Features from "@/components/store/features";
+import { db } from "@/lib/db";
 import Hero from "@/components/store/hero";
 import MarqueeStrip from "@/components/store/hero/marquee";
-import Newsletter from "@/components/store/newsletter";
-import BestSellers from "@/components/store/product/best-sellers";
+import Categories from "@/components/store/categories";
 import NewArrivals from "@/components/store/product/new-arrivals";
 import PromoBanner from "@/components/store/promo-banner";
+import BestSellers from "@/components/store/product/best-sellers";
+import Features from "@/components/store/features";
+import Newsletter from "@/components/store/newsletter";
 
-export default function HomePage() {
+async function getSettings() {
+  const settings = await db.siteSettings.findMany();
+  const map: Record<string, string> = {};
+  settings.forEach((s) => {
+    map[s.key] = s.value;
+  });
+  return map;
+}
+
+export default async function HomePage() {
+  const settings = await getSettings();
+
   return (
     <>
-      <Hero />
-      <MarqueeStrip />
+      <Hero settings={settings} />
+      <MarqueeStrip settings={settings} />
       <Categories />
       <NewArrivals />
-      <PromoBanner />
+      <PromoBanner settings={settings} />
       <BestSellers />
       <Features />
       <Newsletter />

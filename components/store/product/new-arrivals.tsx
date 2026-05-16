@@ -1,58 +1,25 @@
+import { db } from "@/lib/db";
 import ProductCard from "./product-card";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-const products = [
-  {
-    id: "1",
-    name: "Linen Wrap Dress",
-    slug: "linen-wrap-dress",
-    price: 7200,
-    comparePrice: undefined,
-    image: "",
-    category: "Casual",
-    isNew: true,
-    isSale: false,
-  },
-  {
-    id: "2",
-    name: "Satin Midi Dress",
-    slug: "satin-midi-dress",
-    price: 5400,
-    comparePrice: 8200,
-    image: "",
-    category: "Evening",
-    isNew: false,
-    isSale: true,
-  },
-  {
-    id: "3",
-    name: "Floral Maxi Dress",
-    slug: "floral-maxi-dress",
-    price: 6800,
-    comparePrice: undefined,
-    image: "",
-    category: "Summer",
-    isNew: true,
-    isSale: false,
-  },
-  {
-    id: "4",
-    name: "Cream Blazer Dress",
-    slug: "cream-blazer-dress",
-    price: 9500,
-    comparePrice: undefined,
-    image: "",
-    category: "Office",
-    isNew: true,
-    isSale: false,
-  },
-];
+async function getNewArrivals() {
+  return db.product.findMany({
+    where: { isActive: true, isNew: true },
+    take: 4,
+    orderBy: { createdAt: "desc" },
+    include: {
+      images: { where: { isPrimary: true }, take: 1 },
+      category: true,
+    },
+  });
+}
 
-export default function NewArrivals() {
+export default async function NewArrivals() {
+  const products = await getNewArrivals();
+
   return (
     <section className="max-w-7xl mx-auto px-5 lg:px-10 py-16 lg:py-24">
-      {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>
           <p className="text-[10px] text-brand-500 tracking-[0.25em] uppercase mb-2">
@@ -75,14 +42,33 @@ export default function NewArrivals() {
         </Link>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-xs text-brand-400 tracking-wide">
+            No new arrivals yet — add products in the admin panel
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={{
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                price: product.price,
+                comparePrice: product.comparePrice ?? undefined,
+                image: product.images[0]?.url ?? "",
+                category: product.category.name,
+                isNew: product.isNew,
+                isSale: !!product.comparePrice,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Mobile view all */}
       <div className="mt-8 text-center sm:hidden">
         <Link
           href="/new-arrivals"

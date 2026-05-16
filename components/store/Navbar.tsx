@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
+import { useMounted } from "@/hooks/use-mounted";
 
 const navLinks = [
   { label: "New Arrivals", href: "/new-arrivals" },
@@ -63,10 +64,14 @@ export default function Navbar() {
   const [openMobileDropdown, setOpenMobileDropdown] = useState<string | null>(
     null,
   );
+  const mounted = useMounted();
 
   const totalItems = useCartStore((s) => s.getTotalItems());
   const wishlistCount = useWishlistStore((s) => s.items.length);
   const openCart = useCartStore((s) => s.openCart);
+
+  const cartCount = mounted ? totalItems : 0;
+  const wishCount = mounted ? wishlistCount : 0;
 
   // Scroll shadow
   useEffect(() => {
@@ -176,9 +181,9 @@ export default function Navbar() {
                 aria-label="Wishlist"
               >
                 <Heart size={20} strokeWidth={1.5} />
-                {wishlistCount > 0 && (
+                {wishCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-brand-800 text-brand-50 text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
-                    {wishlistCount}
+                    {wishCount}
                   </span>
                 )}
               </Link>
@@ -197,14 +202,10 @@ export default function Navbar() {
                 aria-label="Cart"
               >
                 <ShoppingBag size={20} strokeWidth={1.5} />
-                {totalItems > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1.5 -right-1.5 bg-brand-900 text-brand-50 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-medium"
-                  >
-                    {totalItems}
-                  </motion.span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-900 text-brand-50 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-medium">
+                    {cartCount}
+                  </span>
                 )}
               </button>
             </div>
@@ -404,7 +405,7 @@ export default function Navbar() {
                   className="flex items-center gap-3 text-[11px] text-brand-600 hover:text-brand-900 tracking-[0.1em] uppercase transition-colors"
                 >
                   <Heart size={16} strokeWidth={1.5} />
-                  Wishlist {wishlistCount > 0 && `(${wishlistCount})`}
+                  Wishlist {wishCount > 0 && `(${wishCount})`}
                 </Link>
                 <Link
                   href="/store-locations"

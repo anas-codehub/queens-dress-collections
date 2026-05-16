@@ -4,7 +4,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
-export default function Hero() {
+export default function Hero({
+  settings,
+}: {
+  settings: Record<string, string>;
+}) {
   return (
     <section className="relative bg-brand-200 min-h-[90vh] flex flex-col items-center justify-center px-6 overflow-hidden">
       {/* Background texture — subtle grain */}
@@ -17,7 +21,7 @@ export default function Hero() {
         transition={{ duration: 0.6, delay: 0.1 }}
         className="text-[10px] text-brand-600 tracking-[0.35em] uppercase mb-8"
       >
-        Summer Collection 2026
+        {settings.heroTag ?? "Summer Collection 2026"}
       </motion.p>
 
       {/* Main headline */}
@@ -27,11 +31,7 @@ export default function Hero() {
         transition={{ duration: 0.8, delay: 0.2 }}
         className="font-serif text-5xl sm:text-6xl lg:text-8xl text-brand-900 text-center leading-[1.1] tracking-[0.02em] mb-6 max-w-4xl"
       >
-        Dressed for
-        <br />
-        <em className="italic text-brand-700">the woman</em>
-        <br />
-        you are
+        {settings.heroHeadline ?? "Dressed for the woman you are"}
       </motion.h1>
 
       {/* Subtext */}
@@ -41,9 +41,8 @@ export default function Hero() {
         transition={{ duration: 0.6, delay: 0.4 }}
         className="text-xs text-brand-600 tracking-[0.12em] text-center max-w-sm leading-relaxed mb-10"
       >
-        Timeless silhouettes and luxurious fabrics,
-        <br />
-        crafted exclusively for her.
+        {settings.heroSubtext ??
+          "Timeless silhouettes and luxurious fabrics, crafted exclusively for her."}
       </motion.p>
 
       {/* CTA Buttons */}
@@ -57,7 +56,7 @@ export default function Hero() {
           href="/shop"
           className="group flex items-center gap-2 bg-brand-900 text-brand-100 text-[11px] tracking-[0.18em] uppercase px-8 py-4 hover:bg-brand-800 transition-colors duration-300"
         >
-          Shop Collection
+          {settings.heroCta ?? "Shop Collection"}
           <ArrowRight
             size={14}
             strokeWidth={1.5}
@@ -68,7 +67,7 @@ export default function Hero() {
           href="/collections"
           className="text-[11px] text-brand-700 tracking-[0.18em] uppercase px-8 py-4 border border-brand-500 hover:border-brand-900 hover:text-brand-900 transition-colors duration-300"
         >
-          View Lookbook
+          {settings.heroCtaSecondary ?? "View Lookbook"}
         </Link>
       </motion.div>
 

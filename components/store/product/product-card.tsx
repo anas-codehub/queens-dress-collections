@@ -12,7 +12,7 @@ type Product = {
   name: string;
   slug: string;
   price: number;
-  comparePrice?: number;
+  comparePrice: number | null | undefined;
   image: string;
   category: string;
   isNew?: boolean;
