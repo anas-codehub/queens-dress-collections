@@ -162,6 +162,7 @@ model Product {
   orderItems OrderItem[]
   cartItems  CartItem[]
   wishlist   WishlistItem[]
+  coupons    Coupon[]
 
   @@map("products")
 }
@@ -254,8 +255,10 @@ model Coupon {
   expiresAt   DateTime?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
+  productId   String?
 
-  orders Order[]
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders  Order[]
 
   @@map("coupons")
 }

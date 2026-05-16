@@ -1,0 +1,1 @@
+// code: { equals: code.toUpperCase() }
