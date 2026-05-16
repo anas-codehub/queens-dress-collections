@@ -304,3 +304,11 @@ model OrderItem {
 
   @@map("order_items")
 }
+
+model SiteSettings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@map("site_settings")
+}

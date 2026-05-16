@@ -66,6 +66,7 @@ export default function Navbar() {
 
   const totalItems = useCartStore((s) => s.getTotalItems());
   const wishlistCount = useWishlistStore((s) => s.items.length);
+  const openCart = useCartStore((s) => s.openCart);
 
   // Scroll shadow
   useEffect(() => {
@@ -190,8 +191,8 @@ export default function Navbar() {
                 <User size={20} strokeWidth={1.5} />
               </Link>
 
-              <Link
-                href="/cart"
+              <button
+                onClick={openCart}
                 className="relative text-brand-600 hover:text-brand-900 transition-colors p-1"
                 aria-label="Cart"
               >
@@ -205,7 +206,7 @@ export default function Navbar() {
                     {totalItems}
                   </motion.span>
                 )}
-              </Link>
+              </button>
             </div>
           </div>
         </div>
