@@ -9,8 +9,7 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } =
     useCartStore();
   const total = getTotalPrice();
-  const shipping = total >= 3000 ? 0 : 120;
-
+  const shipping = 0;
   if (items.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-5 lg:px-10 py-24 flex flex-col items-center gap-5">
@@ -161,7 +160,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-xs text-brand-600 tracking-wide">
                 <span>Shipping</span>
-                <span>{shipping === 0 ? "Free" : `৳${shipping}`}</span>
+                <span className="text-brand-400">Calculated at checkout</span>
               </div>
               {shipping > 0 && (
                 <p className="text-[10px] text-brand-400 tracking-wide">

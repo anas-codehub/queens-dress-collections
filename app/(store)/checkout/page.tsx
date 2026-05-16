@@ -7,31 +7,21 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { useDeliveryCharge } from "@/hooks/use-delivery-charge";
+import { ALL_DISTRICTS } from "@/lib/districts";
 
 const steps = ["Shipping", "Payment", "Review"];
-
-const districts = [
-  "Dhaka",
-  "Chittagong",
-  "Rajshahi",
-  "Khulna",
-  "Sylhet",
-  "Barisal",
-  "Rangpur",
-  "Mymensingh",
-  "Comilla",
-  "Narayanganj",
-];
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [coupon, setCoupon] = useState("");
+  const [payment, setPayment] = useState<"COD" | "BKASH" | "NAGAD" | "CARD">(
+    "COD",
+  );
+
   const { items, getTotalPrice, clearCart } = useCartStore();
   const router = useRouter();
-
-  const subtotal = getTotalPrice();
-  const shipping = subtotal >= 3000 ? 0 : 120;
-  const total = subtotal + shipping;
 
   const [shipping_info, setShippingInfo] = useState({
     name: "",
@@ -44,10 +34,12 @@ export default function CheckoutPage() {
     postalCode: "",
   });
 
-  const [payment, setPayment] = useState<"COD" | "BKASH" | "NAGAD" | "CARD">(
-    "COD",
+  const subtotal = getTotalPrice();
+  const { charge: deliveryCharge, zoneLabel } = useDeliveryCharge(
+    shipping_info.district,
   );
-  const [coupon, setCoupon] = useState("");
+  const shipping = deliveryCharge;
+  const total = subtotal + shipping;
 
   function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,11 +101,9 @@ export default function CheckoutPage() {
             <div className="flex flex-col items-center gap-1">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs transition-colors ${
-                  i < step
+                  i <= step
                     ? "bg-brand-900 text-brand-50"
-                    : i === step
-                      ? "bg-brand-900 text-brand-50"
-                      : "bg-brand-200 text-brand-500"
+                    : "bg-brand-200 text-brand-500"
                 }`}
               >
                 {i < step ? <Check size={14} strokeWidth={2} /> : i + 1}
@@ -285,7 +275,7 @@ export default function CheckoutPage() {
                         className="w-full appearance-none bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors tracking-wide"
                       >
                         <option value="">Select district</option>
-                        {districts.map((d) => (
+                        {ALL_DISTRICTS.map((d) => (
                           <option key={d} value={d}>
                             {d}
                           </option>
@@ -342,7 +332,6 @@ export default function CheckoutPage() {
                   Payment Method
                 </h2>
 
-                {/* Payment Options */}
                 {[
                   {
                     id: "COD",
@@ -396,7 +385,6 @@ export default function CheckoutPage() {
                   </button>
                 ))}
 
-                {/* Card fields */}
                 {payment === "CARD" && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -475,7 +463,6 @@ export default function CheckoutPage() {
                   Review Your Order
                 </h2>
 
-                {/* Shipping Summary */}
                 <div className="p-4 bg-brand-100 border border-brand-300">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] text-brand-500 tracking-[0.15em] uppercase font-medium">
@@ -503,7 +490,6 @@ export default function CheckoutPage() {
                   </p>
                 </div>
 
-                {/* Payment Summary */}
                 <div className="p-4 bg-brand-100 border border-brand-300">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] text-brand-500 tracking-[0.15em] uppercase font-medium">
@@ -521,7 +507,6 @@ export default function CheckoutPage() {
                   </p>
                 </div>
 
-                {/* Items Summary */}
                 <div className="flex flex-col gap-3">
                   {items.map((item) => (
                     <div
@@ -538,8 +523,8 @@ export default function CheckoutPage() {
                           {item.name}
                         </p>
                         <p className="text-[10px] text-brand-400 tracking-wide mt-0.5">
-                          Qty: {item.quantity}{" "}
-                          {item.size && `· Size: ${item.size}`}
+                          Qty: {item.quantity}
+                          {item.size && ` · Size: ${item.size}`}
                         </p>
                       </div>
                       <p className="text-xs text-brand-900 font-medium">
@@ -627,8 +612,19 @@ export default function CheckoutPage() {
                 <span>৳{subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs text-brand-600 tracking-wide">
-                <span>Shipping</span>
-                <span>{shipping === 0 ? "Free" : `৳${shipping}`}</span>
+                <span>
+                  Delivery
+                  {shipping_info.district && (
+                    <span className="ml-1 text-[10px] text-brand-400">
+                      ({zoneLabel})
+                    </span>
+                  )}
+                </span>
+                <span>
+                  {shipping_info.district
+                    ? `৳${deliveryCharge.toLocaleString()}`
+                    : "Select district"}
+                </span>
               </div>
               <div className="flex justify-between text-sm font-medium text-brand-900 pt-2 border-t border-brand-300">
                 <span>Total</span>

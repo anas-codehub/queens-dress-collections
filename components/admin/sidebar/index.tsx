@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Ticket,
   Home,
+  Truck,
 } from "lucide-react";
 
 const navItems = [
@@ -48,6 +49,8 @@ const navItems = [
     href: "/admin/coupons",
     icon: Ticket,
   },
+
+  { label: "Delivery", href: "/admin/delivery", icon: Truck },
   {
     label: "Analytics",
     href: "/admin/analytics",

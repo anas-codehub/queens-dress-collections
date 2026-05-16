@@ -315,3 +315,14 @@ model SiteSettings {
 
   @@map("site_settings")
 }
+
+model DeliveryZone {
+  id        String   @id @default(cuid())
+  zone      String   @unique
+  label     String
+  charge    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("delivery_zones")
+}

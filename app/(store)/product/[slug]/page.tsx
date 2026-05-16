@@ -5,10 +5,12 @@ import ProductDetails from "@/components/store/product/product-details";
 export default async function ProductPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
+
   const product = await db.product.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     include: {
       images: true,
       variants: true,

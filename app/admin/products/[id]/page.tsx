@@ -5,14 +5,16 @@ import ProductForm from "@/components/admin/forms/product-form";
 export default async function EditProductPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const [product, categories] = await Promise.all([
     db.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         images: true,
         variants: true,
+        coupons: true,
       },
     }),
     db.category.findMany({
