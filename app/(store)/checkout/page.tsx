@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores/cart-store";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,7 @@ export default function CheckoutPage() {
 
   function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const required = ["name", "phone", "email", "line1", "city", "district"];
+    const required = ["name", "phone", "line1", "city", "district"];
     for (const field of required) {
       if (!shipping_info[field as keyof typeof shipping_info]) {
         toast.error(`Please fill in ${field}`);
@@ -56,11 +56,35 @@ export default function CheckoutPage() {
 
   async function handlePlaceOrder() {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    clearCart();
-    toast.success("Order placed successfully! 🎉");
-    router.push("/account");
-    setLoading(false);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items,
+          shippingInfo: shipping_info,
+          paymentMethod: payment,
+          subtotal,
+          shipping,
+          total,
+          couponCode: coupon || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error ?? "Failed to place order");
+        return;
+      }
+
+      clearCart();
+      toast.success("Order placed successfully! 🎉");
+      router.push("/account/orders");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (items.length === 0) {
@@ -75,6 +99,77 @@ export default function CheckoutPage() {
         >
           Continue Shopping
         </Link>
+      </div>
+    );
+  }
+
+  function DistrictAutocomplete({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (val: string) => void;
+  }) {
+    const [query, setQuery] = useState(value);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      function handleClick(e: MouseEvent) {
+        if (ref.current && !ref.current.contains(e.target as Node)) {
+          setOpen(false);
+        }
+      }
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
+
+    function handleInput(val: string) {
+      setQuery(val);
+      onChange(val);
+      if (val.length > 0) {
+        const filtered = ALL_DISTRICTS.filter((d) =>
+          d.toLowerCase().startsWith(val.toLowerCase()),
+        );
+        setSuggestions(filtered);
+        setOpen(filtered.length > 0);
+      } else {
+        setSuggestions([]);
+        setOpen(false);
+      }
+    }
+
+    function handleSelect(district: string) {
+      setQuery(district);
+      onChange(district);
+      setOpen(false);
+    }
+
+    return (
+      <div ref={ref} className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleInput(e.target.value)}
+          className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
+          placeholder="Type or select district"
+          autoComplete="off"
+        />
+        {open && (
+          <div className="absolute top-full left-0 right-0 bg-brand-50 border border-brand-300 border-t-0 z-20 max-h-48 overflow-y-auto">
+            {suggestions.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => handleSelect(d)}
+                className="w-full text-left px-4 py-2.5 text-xs text-brand-700 hover:bg-brand-200 hover:text-brand-900 transition-colors tracking-wide"
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -263,30 +358,12 @@ export default function CheckoutPage() {
                     <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                       District *
                     </label>
-                    <div className="relative">
-                      <select
-                        value={shipping_info.district}
-                        onChange={(e) =>
-                          setShippingInfo({
-                            ...shipping_info,
-                            district: e.target.value,
-                          })
-                        }
-                        className="w-full appearance-none bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors tracking-wide"
-                      >
-                        <option value="">Select district</option>
-                        {ALL_DISTRICTS.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={13}
-                        strokeWidth={1.5}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-500 pointer-events-none"
-                      />
-                    </div>
+                    <DistrictAutocomplete
+                      value={shipping_info.district}
+                      onChange={(val) =>
+                        setShippingInfo({ ...shipping_info, district: val })
+                      }
+                    />
                   </div>
                 </div>
 
