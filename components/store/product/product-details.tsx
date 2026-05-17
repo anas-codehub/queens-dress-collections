@@ -13,6 +13,7 @@ import {
 import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { toast } from "sonner";
+import ReviewsSection from "./reviews-section";
 
 type ProductWithDetails = {
   id: string;
@@ -469,6 +470,7 @@ export default function ProductDetails({
               </div>
             </div>
           )}
+          <ReviewsSection productId={product.id} />
         </motion.div>
       </div>
     </div>

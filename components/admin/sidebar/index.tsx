@@ -16,6 +16,7 @@ import {
   Ticket,
   Home,
   Truck,
+  Star,
 } from "lucide-react";
 
 const navItems = [
@@ -49,6 +50,8 @@ const navItems = [
     href: "/admin/coupons",
     icon: Ticket,
   },
+
+  { label: "Reviews", href: "/admin/reviews", icon: Star },
 
   { label: "Delivery", href: "/admin/delivery", icon: Truck },
   {

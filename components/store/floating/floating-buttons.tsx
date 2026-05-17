@@ -22,7 +22,23 @@ export default function FloatingButtons() {
   }, []);
 
   function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: "instant" });
+    const duration = 600;
+    const start = window.scrollY;
+    const startTime = performance.now();
+
+    function easeInOutCubic(t: number) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animate(currentTime: number) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = easeInOutCubic(progress);
+      window.scrollTo(0, start * (1 - ease));
+      if (progress < 1) requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
   }
 
   const chatOptions = [

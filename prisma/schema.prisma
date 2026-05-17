@@ -201,9 +201,11 @@ model Review {
   id         String   @id @default(cuid())
   productId  String
   userId     String
+  orderId    String?
   rating     Int
   title      String?
   body       String?
+  photos     String[]
   isApproved Boolean  @default(false)
   createdAt  DateTime @default(now())
 

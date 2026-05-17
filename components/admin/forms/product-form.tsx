@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, X } from "lucide-react";
 import slugify from "slugify";
+import { motion } from "framer-motion";
 
 type Category = {
   id: string;
@@ -33,12 +34,20 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
   const editing = !!product;
 
   const [loading, setLoading] = useState(false);
+
+  const [price, setPrice] = useState(product?.price?.toString() ?? "");
+  const [actualPrice, setActualPrice] = useState(
+    product?.comparePrice?.toString() ?? "",
+  );
+  const [discountType, setDiscountType] = useState<
+    "PERCENT" | "AMOUNT" | "NONE"
+  >("NONE");
+  const [discountValue, setDiscountValue] = useState("");
   const [form, setForm] = useState({
     name: product?.name ?? "",
     slug: product?.slug ?? "",
     description: product?.description ?? "",
-    price: product?.price ?? "",
-    comparePrice: product?.comparePrice ?? "",
+
     categoryId: product?.categoryId ?? "",
     isActive: product?.isActive ?? true,
     isFeatured: product?.isFeatured ?? false,
@@ -150,20 +159,34 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.name || !form.price || !form.categoryId) {
+    if (!form.name || !price || !form.categoryId) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
 
+    const computedPrice = (() => {
+      const ap = parseFloat(actualPrice || price);
+      const sp = parseFloat(price);
+      if (discountType === "PERCENT" && discountValue) {
+        const discounted = sp - (sp * parseFloat(discountValue)) / 100;
+        return Math.round(discounted);
+      }
+      if (discountType === "AMOUNT" && discountValue) {
+        return Math.round(sp - parseFloat(discountValue));
+      }
+      return sp;
+    })();
+
     try {
       const payload = {
         ...form,
-        price: parseFloat(form.price as string),
-        comparePrice: form.comparePrice
-          ? parseFloat(form.comparePrice as string)
-          : null,
+        price: computedPrice,
+        comparePrice:
+          discountType !== "NONE"
+            ? parseFloat(price)
+            : parseFloat(actualPrice) || null,
         tags: form.tags
           .split(",")
           .map((t: string) => t.trim())
@@ -277,32 +300,189 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
           <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">
             Pricing
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+
+          <div className="flex flex-col gap-4">
+            {/* Actual Price */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                Price (৳) *
+                Actual Price (৳)
+                <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
+                  — original / market price
+                </span>
               </label>
               <input
                 type="number"
-                value={form.price}
-                onChange={(e) => update("price", e.target.value)}
+                value={actualPrice}
+                onChange={(e) => setActualPrice(e.target.value)}
                 className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
-                placeholder="7200"
+                placeholder="e.g. 9500"
+                min={0}
+              />
+            </div>
+
+            {/* Selling Price */}
+            <div>
+              <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
+                Selling Price (৳) *
+                <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
+                  — price before any discount
+                </span>
+              </label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
+                placeholder="e.g. 7200"
+                min={0}
                 required
               />
             </div>
-            <div>
-              <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                Compare Price (৳)
-              </label>
-              <input
-                type="number"
-                value={form.comparePrice}
-                onChange={(e) => update("comparePrice", e.target.value)}
-                className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
-                placeholder="9500"
-              />
+
+            {/* Discount Section */}
+            <div className="border-t border-brand-200 pt-4">
+              <p className="text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-3">
+                Discount (optional)
+              </p>
+
+              {/* Discount Type Toggle */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[
+                  { id: "NONE", label: "No Discount" },
+                  { id: "PERCENT", label: "By %" },
+                  { id: "AMOUNT", label: "By ৳" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDiscountType(opt.id as typeof discountType);
+                      setDiscountValue("");
+                    }}
+                    className={`py-2.5 text-[10px] tracking-widest uppercase border transition-colors ${
+                      discountType === opt.id
+                        ? "bg-brand-900 border-brand-900 text-brand-100"
+                        : "border-brand-300 text-brand-600 hover:border-brand-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Discount Value Input */}
+              {discountType !== "NONE" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
+                    {discountType === "PERCENT"
+                      ? "Discount Percentage (%)"
+                      : "Discount Amount (৳)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
+                    placeholder={
+                      discountType === "PERCENT" ? "e.g. 20" : "e.g. 500"
+                    }
+                    min={0}
+                    max={discountType === "PERCENT" ? 100 : undefined}
+                  />
+                </motion.div>
+              )}
             </div>
+
+            {/* Price Preview */}
+            {(() => {
+              const sp = parseFloat(price) || 0;
+              const ap = parseFloat(actualPrice) || 0;
+              const dv = parseFloat(discountValue) || 0;
+
+              let finalPrice = sp;
+              let savedAmount = 0;
+              let discountLabel = "";
+
+              if (discountType === "PERCENT" && dv > 0) {
+                savedAmount = Math.round((sp * dv) / 100);
+                finalPrice = sp - savedAmount;
+                discountLabel = `${dv}% off`;
+              } else if (discountType === "AMOUNT" && dv > 0) {
+                savedAmount = dv;
+                finalPrice = sp - dv;
+                discountLabel = `৳${dv} off`;
+              }
+
+              if (sp === 0) return null;
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="border border-brand-300 bg-brand-50 p-4 mt-2"
+                >
+                  <p className="text-[10px] text-brand-500 tracking-[0.15em] uppercase mb-3">
+                    Price Preview — how it appears on store
+                  </p>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Final price */}
+                    <span className="text-xl font-medium text-brand-900">
+                      ৳{finalPrice.toLocaleString()}
+                    </span>
+
+                    {/* Actual price strikethrough */}
+                    {ap > 0 && (
+                      <span className="text-sm text-brand-400 line-through">
+                        ৳{ap.toLocaleString()}
+                      </span>
+                    )}
+
+                    {/* Selling price strikethrough if discount applied */}
+                    {discountType !== "NONE" && savedAmount > 0 && ap === 0 && (
+                      <span className="text-sm text-brand-400 line-through">
+                        ৳{sp.toLocaleString()}
+                      </span>
+                    )}
+
+                    {/* Discount badge */}
+                    {savedAmount > 0 && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 tracking-wide">
+                        {discountLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Summary rows */}
+                  <div className="mt-3 flex flex-col gap-1.5 border-t border-brand-200 pt-3">
+                    {ap > 0 && (
+                      <div className="flex justify-between text-[10px] text-brand-500 tracking-wide">
+                        <span>Actual Price</span>
+                        <span>৳{ap.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-[10px] text-brand-500 tracking-wide">
+                      <span>Selling Price</span>
+                      <span>৳{sp.toLocaleString()}</span>
+                    </div>
+                    {savedAmount > 0 && (
+                      <div className="flex justify-between text-[10px] text-green-600 tracking-wide">
+                        <span>Discount ({discountLabel})</span>
+                        <span>- ৳{savedAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-brand-900 font-medium tracking-wide border-t border-brand-200 pt-1.5 mt-0.5">
+                      <span>Customer Pays</span>
+                      <span>৳{finalPrice.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()}
           </div>
         </div>
 
