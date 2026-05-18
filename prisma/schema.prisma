@@ -163,6 +163,7 @@ model Product {
   cartItems  CartItem[]
   wishlist   WishlistItem[]
   coupons    Coupon[]
+  costPrice  Float?
 
   @@map("products")
 }

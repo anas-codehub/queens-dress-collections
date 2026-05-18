@@ -35,12 +35,17 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
 
   const [loading, setLoading] = useState(false);
 
-  const [price, setPrice] = useState(product?.price?.toString() ?? "");
-  const [actualPrice, setActualPrice] = useState(
+  const [costPrice, setCostPrice] = useState(
+    product?.costPrice?.toString() ?? "",
+  );
+  const [sellingPrice, setSellingPrice] = useState(
+    product?.price?.toString() ?? "",
+  );
+  const [comparePrice, setComparePrice] = useState(
     product?.comparePrice?.toString() ?? "",
   );
   const [discountType, setDiscountType] = useState<
-    "PERCENT" | "AMOUNT" | "NONE"
+    "NONE" | "PERCENT" | "AMOUNT"
   >("NONE");
   const [discountValue, setDiscountValue] = useState("");
   const [form, setForm] = useState({
@@ -159,34 +164,35 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.name || !price || !form.categoryId) {
+    if (!form.name || !sellingPrice || !form.categoryId) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
 
-    const computedPrice = (() => {
-      const ap = parseFloat(actualPrice || price);
-      const sp = parseFloat(price);
-      if (discountType === "PERCENT" && discountValue) {
-        const discounted = sp - (sp * parseFloat(discountValue)) / 100;
-        return Math.round(discounted);
+    const { finalPrice, newCompare } = (() => {
+      const sp = parseFloat(sellingPrice) || 0;
+      const dv = parseFloat(discountValue) || 0;
+      let finalPrice = sp;
+      let newCompare = parseFloat(comparePrice) || null;
+
+      if (discountType === "PERCENT" && dv > 0) {
+        finalPrice = Math.round(sp - (sp * dv) / 100);
+        newCompare = sp;
+      } else if (discountType === "AMOUNT" && dv > 0) {
+        finalPrice = Math.round(sp - dv);
+        newCompare = sp;
       }
-      if (discountType === "AMOUNT" && discountValue) {
-        return Math.round(sp - parseFloat(discountValue));
-      }
-      return sp;
+      return { finalPrice, newCompare };
     })();
 
     try {
       const payload = {
         ...form,
-        price: computedPrice,
-        comparePrice:
-          discountType !== "NONE"
-            ? parseFloat(price)
-            : parseFloat(actualPrice) || null,
+        price: finalPrice,
+        comparePrice: newCompare,
+        costPrice: parseFloat(costPrice) || null,
         tags: form.tags
           .split(",")
           .map((t: string) => t.trim())
@@ -302,20 +308,20 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
           </h2>
 
           <div className="flex flex-col gap-4">
-            {/* Actual Price */}
+            {/* Cost Price */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                Actual Price (৳)
-                <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
-                  — original / market price
+                Cost Price (৳)
+                <span className="ml-1 text-[9px] text-brand-400 normal-case tracking-normal font-normal">
+                  — admin only, never shown to customers
                 </span>
               </label>
               <input
                 type="number"
-                value={actualPrice}
-                onChange={(e) => setActualPrice(e.target.value)}
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
                 className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
-                placeholder="e.g. 9500"
+                placeholder="e.g. 8500"
                 min={0}
               />
             </div>
@@ -324,28 +330,28 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                 Selling Price (৳) *
-                <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
-                  — price before any discount
+                <span className="ml-1 text-[9px] text-brand-400 normal-case tracking-normal font-normal">
+                  — shown to customers
                 </span>
               </label>
               <input
                 type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                value={sellingPrice}
+                onChange={(e) => setSellingPrice(e.target.value)}
                 className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
-                placeholder="e.g. 7200"
+                placeholder="e.g. 9500"
                 min={0}
                 required
               />
             </div>
 
-            {/* Discount Section */}
+            {/* Discount */}
             <div className="border-t border-brand-200 pt-4">
               <p className="text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-3">
                 Discount (optional)
               </p>
 
-              {/* Discount Type Toggle */}
+              {/* Type selector */}
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {[
                   { id: "NONE", label: "No Discount" },
@@ -359,7 +365,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                       setDiscountType(opt.id as typeof discountType);
                       setDiscountValue("");
                     }}
-                    className={`py-2.5 text-[10px] tracking-widest uppercase border transition-colors ${
+                    className={`py-2.5 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
                       discountType === opt.id
                         ? "bg-brand-900 border-brand-900 text-brand-100"
                         : "border-brand-300 text-brand-600 hover:border-brand-600"
@@ -370,7 +376,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                 ))}
               </div>
 
-              {/* Discount Value Input */}
+              {/* Discount value input */}
               {discountType !== "NONE" && (
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
@@ -379,7 +385,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                 >
                   <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                     {discountType === "PERCENT"
-                      ? "Discount Percentage (%)"
+                      ? "Discount (%)"
                       : "Discount Amount (৳)"}
                   </label>
                   <input
@@ -388,7 +394,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     onChange={(e) => setDiscountValue(e.target.value)}
                     className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors"
                     placeholder={
-                      discountType === "PERCENT" ? "e.g. 20" : "e.g. 500"
+                      discountType === "PERCENT" ? "e.g. 10" : "e.g. 500"
                     }
                     min={0}
                     max={discountType === "PERCENT" ? 100 : undefined}
@@ -397,117 +403,118 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
               )}
             </div>
 
-            {/* Price Preview */}
+            {/* Preview */}
             {(() => {
-              const sp = parseFloat(price) || 0;
-              const ap = parseFloat(actualPrice) || 0;
+              const cp = parseFloat(costPrice) || 0;
+              const sp = parseFloat(sellingPrice) || 0;
               const dv = parseFloat(discountValue) || 0;
 
+              if (sp === 0) return null;
+
+              // Calculate final customer price
               let finalPrice = sp;
-              let savedAmount = 0;
+              let discountAmt = 0;
               let discountPct = 0;
-              let discountLabel = "";
 
               if (discountType === "PERCENT" && dv > 0) {
-                savedAmount = Math.round((sp * dv) / 100);
-                finalPrice = sp - savedAmount;
+                discountAmt = Math.round((sp * dv) / 100);
+                finalPrice = sp - discountAmt;
                 discountPct = dv;
-                discountLabel = `৳${savedAmount.toLocaleString()} (${dv}% off)`;
               } else if (discountType === "AMOUNT" && dv > 0) {
-                savedAmount = dv;
+                discountAmt = dv;
                 finalPrice = sp - dv;
-                discountPct = sp > 0 ? Math.round((dv / sp) * 100) : 0;
-                discountLabel = `৳${dv.toLocaleString()} (${discountPct}% off)`;
+                discountPct = Math.round((dv / sp) * 100);
               }
 
-              const profit = ap > 0 ? finalPrice - ap : null;
-              const isLoss = profit !== null && profit < 0;
+              // Profit calculation
+              const profit = cp > 0 ? finalPrice - cp : null;
               const isProfit = profit !== null && profit >= 0;
-
-              if (sp === 0) return null;
 
               return (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="border border-brand-300 bg-brand-50 p-4 mt-2"
+                  className="border border-brand-300 bg-brand-50 p-4 mt-1"
                 >
                   <p className="text-[10px] text-brand-500 tracking-[0.15em] uppercase mb-3">
-                    Price Preview — how it appears on store
+                    Preview
                   </p>
 
-                  {/* Store display preview */}
-                  <div className="flex items-center gap-3 flex-wrap mb-4 p-3 bg-white border border-brand-200">
-                    <span className="text-xl font-medium text-brand-900">
-                      ৳{finalPrice.toLocaleString()}
-                    </span>
-                    {ap > 0 && (
-                      <span className="text-sm text-brand-400 line-through">
-                        ৳{ap.toLocaleString()}
+                  {/* What customer sees */}
+                  <div className="bg-white border border-brand-200 p-3 mb-3">
+                    <p className="text-[9px] text-brand-400 tracking-[0.12em] uppercase mb-2">
+                      What customer sees
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-lg font-medium text-brand-900">
+                        ৳{finalPrice.toLocaleString()}
                       </span>
-                    )}
-                    {discountType !== "NONE" && savedAmount > 0 && ap === 0 && (
-                      <span className="text-sm text-brand-400 line-through">
-                        ৳{sp.toLocaleString()}
-                      </span>
-                    )}
-                    {savedAmount > 0 && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 tracking-wide font-medium">
-                        {discountLabel}
-                      </span>
-                    )}
+                      {discountAmt > 0 && (
+                        <>
+                          <span className="text-sm text-brand-400 line-through">
+                            ৳{sp.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 tracking-wide">
+                            ৳{discountAmt.toLocaleString()} ({discountPct}% off)
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Calculation breakdown */}
-                  <div className="flex flex-col gap-1.5 border-t border-brand-200 pt-3">
-                    {ap > 0 && (
-                      <div className="flex justify-between text-[10px] text-brand-500 tracking-wide">
-                        <span>Actual / Cost Price (admin only)</span>
-                        <span>৳{ap.toLocaleString()}</span>
-                      </div>
-                    )}
+                  {/* Breakdown */}
+                  <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between text-[10px] text-brand-500 tracking-wide">
                       <span>Selling Price</span>
                       <span>৳{sp.toLocaleString()}</span>
                     </div>
-                    {savedAmount > 0 && (
+
+                    {discountAmt > 0 && (
                       <div className="flex justify-between text-[10px] text-amber-600 tracking-wide">
-                        <span>Discount ({discountLabel})</span>
-                        <span>− ৳{savedAmount.toLocaleString()}</span>
+                        <span>
+                          Discount
+                          {discountType === "PERCENT"
+                            ? ` (${dv}% = ৳${discountAmt.toLocaleString()})`
+                            : ` (৳${discountAmt.toLocaleString()} = ${discountPct}% off)`}
+                        </span>
+                        <span>− ৳{discountAmt.toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-xs text-brand-900 font-medium tracking-wide border-t border-brand-200 pt-1.5 mt-0.5">
+
+                    <div className="flex justify-between text-xs text-brand-900 font-medium tracking-wide border-t border-brand-200 pt-1.5">
                       <span>Customer Pays</span>
                       <span>৳{finalPrice.toLocaleString()}</span>
                     </div>
 
-                    {/* Profit / Loss — only if actual price is set */}
-                    {ap > 0 && (
-                      <div
-                        className={`flex justify-between text-xs font-medium tracking-wide border-t pt-1.5 mt-0.5 ${
-                          isProfit
-                            ? "border-green-200 text-green-700"
-                            : "border-red-200 text-red-600"
-                        }`}
-                      >
-                        <span>
-                          {isProfit ? "Profit per sale" : "Loss per sale"}
-                        </span>
-                        <span>
-                          {isProfit ? "+" : ""}৳{profit!.toLocaleString()}
-                          {sp > 0 && (
-                            <span className="ml-1 text-[9px] opacity-70">
-                              ({Math.abs(Math.round((profit! / ap) * 100))}%{" "}
+                    {cp > 0 && (
+                      <>
+                        <div className="flex justify-between text-[10px] text-brand-500 tracking-wide border-t border-brand-200 pt-1.5">
+                          <span>Cost Price (your cost)</span>
+                          <span>৳{cp.toLocaleString()}</span>
+                        </div>
+                        <div
+                          className={`flex justify-between text-xs font-medium tracking-wide pt-0.5 ${
+                            isProfit ? "text-green-700" : "text-red-600"
+                          }`}
+                        >
+                          <span>
+                            {isProfit ? "Profit per sale" : "Loss per sale"}
+                          </span>
+                          <span>
+                            {isProfit ? "+" : "−"}৳
+                            {Math.abs(profit!).toLocaleString()}
+                            <span className="ml-1 text-[9px] opacity-70 font-normal">
+                              ({Math.abs(Math.round((profit! / cp) * 100))}%{" "}
                               {isProfit ? "margin" : "loss"})
                             </span>
-                          )}
-                        </span>
-                      </div>
+                          </span>
+                        </div>
+                      </>
                     )}
 
-                    {ap === 0 && (
-                      <p className="text-[9px] text-brand-400 tracking-wide mt-1 italic">
-                        💡 Set Actual Price to see profit/loss calculation
+                    {cp === 0 && (
+                      <p className="text-[9px] text-brand-400 italic mt-1">
+                        Set cost price to see profit/loss
                       </p>
                     )}
                   </div>
