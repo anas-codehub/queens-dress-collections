@@ -8,17 +8,95 @@ export const metadata = {
   description: "Browse our full collection of women's dresses and styles.",
 };
 
-async function getProducts() {
-  const products = await db.product.findMany({
-    where: { isActive: true },
-    orderBy: { createdAt: "desc" },
-    include: {
-      images: { where: { isPrimary: true }, take: 1 },
-      category: true,
-    },
-  });
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    categories?: string;
+    sizes?: string;
+    colors?: string;
+    price?: string;
+  }>;
+}) {
+  const params = await searchParams;
+  const catSlugs = params.categories?.split(",").filter(Boolean) ?? [];
+  const sizes = params.sizes?.split(",").filter(Boolean) ?? [];
+  const colors = params.colors?.split(",").filter(Boolean) ?? [];
+  const priceRange = params.price ?? "";
 
-  return products.map((p) => ({
+  // Parse price range
+  let minPrice: number | undefined;
+  let maxPrice: number | undefined;
+
+  if (priceRange) {
+    if (priceRange.includes("Under")) {
+      minPrice = 0;
+      maxPrice = 3000;
+    } else if (priceRange.includes("Over")) {
+      minPrice = 15000;
+      maxPrice = 999999;
+    } else {
+      const match = priceRange.match(/৳([\d,]+)\s*—\s*৳([\d,]+)/);
+      if (match) {
+        minPrice = parseInt(match[1].replace(",", ""));
+        maxPrice = parseInt(match[2].replace(",", ""));
+      }
+    }
+  }
+
+  // Build where clause
+  const where: any = { isActive: true };
+
+  if (catSlugs.length > 0) {
+    where.category = { slug: { in: catSlugs } };
+  }
+
+  if (sizes.length > 0) {
+    where.variants = { some: { size: { in: sizes }, stock: { gt: 0 } } };
+  }
+
+  if (colors.length > 0) {
+    where.variants = {
+      ...where.variants,
+      some: {
+        ...(where.variants?.some ?? {}),
+        color: { in: colors },
+      },
+    };
+  }
+
+  if (minPrice !== undefined && maxPrice !== undefined) {
+    where.price = { gte: minPrice, lte: maxPrice };
+  }
+
+  const [products, categories, allColors] = await Promise.all([
+    db.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        images: { where: { isPrimary: true }, take: 1 },
+        category: true,
+        variants: true,
+      },
+    }),
+    db.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    // Get all unique colors from variants
+    db.productVariant.findMany({
+      where: { color: { not: null } },
+      select: { color: true },
+      distinct: ["color"],
+    }),
+  ]);
+
+  const uniqueColors = allColors
+    .map((v) => v.color!)
+    .filter(Boolean)
+    .sort();
+
+  const mappedProducts = products.map((p) => ({
     id: p.id,
     name: p.name,
     slug: p.slug,
@@ -29,10 +107,6 @@ async function getProducts() {
     isNew: p.isNew,
     isSale: !!p.comparePrice,
   }));
-}
-
-export default async function ShopPage() {
-  const products = await getProducts();
 
   return (
     <div className="max-w-7xl mx-auto px-5 lg:px-10 py-10">
@@ -45,7 +119,7 @@ export default async function ShopPage() {
             All Products
           </h1>
           <p className="text-xs text-brand-500 tracking-wide hidden sm:block">
-            {products.length} products
+            {products.length} product{products.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -53,11 +127,11 @@ export default async function ShopPage() {
       <div className="flex flex-col lg:flex-row gap-10">
         <aside className="w-full lg:w-56 shrink-0">
           <Suspense>
-            <ShopFilters />
+            <ShopFilters categories={categories} colors={uniqueColors} />
           </Suspense>
         </aside>
         <div className="flex-1">
-          <ShopGrid products={products} />
+          <ShopGrid products={mappedProducts} />
         </div>
       </div>
     </div>

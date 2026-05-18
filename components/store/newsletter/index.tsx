@@ -13,12 +13,25 @@ export default function Newsletter() {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    toast.success("You're on the list! Welcome to the Queens circle.");
-    setEmail("");
-    setLoading(false);
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to subscribe");
+        return;
+      }
+      toast.success("You're on the list! Welcome to the Queens Circle. 👑");
+      setEmail("");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   }
-
   return (
     <section className="bg-brand-200 py-20 px-6">
       <motion.div

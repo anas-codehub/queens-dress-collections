@@ -405,17 +405,24 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
 
               let finalPrice = sp;
               let savedAmount = 0;
+              let discountPct = 0;
               let discountLabel = "";
 
               if (discountType === "PERCENT" && dv > 0) {
                 savedAmount = Math.round((sp * dv) / 100);
                 finalPrice = sp - savedAmount;
-                discountLabel = `${dv}% off`;
+                discountPct = dv;
+                discountLabel = `৳${savedAmount.toLocaleString()} (${dv}% off)`;
               } else if (discountType === "AMOUNT" && dv > 0) {
                 savedAmount = dv;
                 finalPrice = sp - dv;
-                discountLabel = `৳${dv} off`;
+                discountPct = sp > 0 ? Math.round((dv / sp) * 100) : 0;
+                discountLabel = `৳${dv.toLocaleString()} (${discountPct}% off)`;
               }
+
+              const profit = ap > 0 ? finalPrice - ap : null;
+              const isLoss = profit !== null && profit < 0;
+              const isProfit = profit !== null && profit >= 0;
 
               if (sp === 0) return null;
 
@@ -429,39 +436,33 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     Price Preview — how it appears on store
                   </p>
 
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {/* Final price */}
+                  {/* Store display preview */}
+                  <div className="flex items-center gap-3 flex-wrap mb-4 p-3 bg-white border border-brand-200">
                     <span className="text-xl font-medium text-brand-900">
                       ৳{finalPrice.toLocaleString()}
                     </span>
-
-                    {/* Actual price strikethrough */}
                     {ap > 0 && (
                       <span className="text-sm text-brand-400 line-through">
                         ৳{ap.toLocaleString()}
                       </span>
                     )}
-
-                    {/* Selling price strikethrough if discount applied */}
                     {discountType !== "NONE" && savedAmount > 0 && ap === 0 && (
                       <span className="text-sm text-brand-400 line-through">
                         ৳{sp.toLocaleString()}
                       </span>
                     )}
-
-                    {/* Discount badge */}
                     {savedAmount > 0 && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 tracking-wide">
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 tracking-wide font-medium">
                         {discountLabel}
                       </span>
                     )}
                   </div>
 
-                  {/* Summary rows */}
-                  <div className="mt-3 flex flex-col gap-1.5 border-t border-brand-200 pt-3">
+                  {/* Calculation breakdown */}
+                  <div className="flex flex-col gap-1.5 border-t border-brand-200 pt-3">
                     {ap > 0 && (
                       <div className="flex justify-between text-[10px] text-brand-500 tracking-wide">
-                        <span>Actual Price</span>
+                        <span>Actual / Cost Price (admin only)</span>
                         <span>৳{ap.toLocaleString()}</span>
                       </div>
                     )}
@@ -470,15 +471,45 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                       <span>৳{sp.toLocaleString()}</span>
                     </div>
                     {savedAmount > 0 && (
-                      <div className="flex justify-between text-[10px] text-green-600 tracking-wide">
+                      <div className="flex justify-between text-[10px] text-amber-600 tracking-wide">
                         <span>Discount ({discountLabel})</span>
-                        <span>- ৳{savedAmount.toLocaleString()}</span>
+                        <span>− ৳{savedAmount.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs text-brand-900 font-medium tracking-wide border-t border-brand-200 pt-1.5 mt-0.5">
                       <span>Customer Pays</span>
                       <span>৳{finalPrice.toLocaleString()}</span>
                     </div>
+
+                    {/* Profit / Loss — only if actual price is set */}
+                    {ap > 0 && (
+                      <div
+                        className={`flex justify-between text-xs font-medium tracking-wide border-t pt-1.5 mt-0.5 ${
+                          isProfit
+                            ? "border-green-200 text-green-700"
+                            : "border-red-200 text-red-600"
+                        }`}
+                      >
+                        <span>
+                          {isProfit ? "Profit per sale" : "Loss per sale"}
+                        </span>
+                        <span>
+                          {isProfit ? "+" : ""}৳{profit!.toLocaleString()}
+                          {sp > 0 && (
+                            <span className="ml-1 text-[9px] opacity-70">
+                              ({Math.abs(Math.round((profit! / ap) * 100))}%{" "}
+                              {isProfit ? "margin" : "loss"})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {ap === 0 && (
+                      <p className="text-[9px] text-brand-400 tracking-wide mt-1 italic">
+                        💡 Set Actual Price to see profit/loss calculation
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               );

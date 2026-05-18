@@ -17,6 +17,7 @@ import {
   Home,
   Truck,
   Star,
+  Mail,
 } from "lucide-react";
 
 const navItems = [
@@ -59,6 +60,7 @@ const navItems = [
     href: "/admin/analytics",
     icon: BarChart3,
   },
+  { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
   {
     label: "Settings",
     href: "/admin/settings",
