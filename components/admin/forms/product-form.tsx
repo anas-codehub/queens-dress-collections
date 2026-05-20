@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Check } from "lucide-react";
 import slugify from "slugify";
 import { motion } from "framer-motion";
 
@@ -19,7 +19,16 @@ type Variant = {
   colorHex: string;
   sku: string;
   stock: number;
-  price: number | null;
+};
+
+type CouponInput = {
+  code: string;
+  type: string;
+  value: number;
+  minOrder: number | null;
+  usageLimit: number | null;
+  expiresAt: string;
+  isActive: boolean;
 };
 
 type ProductFormProps = {
@@ -27,7 +36,7 @@ type ProductFormProps = {
   product?: any;
 };
 
-const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 export default function ProductForm({ categories, product }: ProductFormProps) {
   const router = useRouter();
@@ -35,24 +44,23 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
 
   const [loading, setLoading] = useState(false);
 
+  // ─── Pricing State ────────────────────────────────────────────────────────
   const [costPrice, setCostPrice] = useState(
     product?.costPrice?.toString() ?? "",
   );
   const [sellingPrice, setSellingPrice] = useState(
     product?.price?.toString() ?? "",
   );
-  const [comparePrice, setComparePrice] = useState(
-    product?.comparePrice?.toString() ?? "",
-  );
   const [discountType, setDiscountType] = useState<
     "NONE" | "PERCENT" | "AMOUNT"
   >("NONE");
   const [discountValue, setDiscountValue] = useState("");
+
+  // ─── Form State ───────────────────────────────────────────────────────────
   const [form, setForm] = useState({
     name: product?.name ?? "",
     slug: product?.slug ?? "",
     description: product?.description ?? "",
-
     categoryId: product?.categoryId ?? "",
     isActive: product?.isActive ?? true,
     isFeatured: product?.isFeatured ?? false,
@@ -60,9 +68,17 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
     tags: product?.tags?.join(", ") ?? "",
   });
 
+  // ─── Variants State ───────────────────────────────────────────────────────
   const [variants, setVariants] = useState<Variant[]>(
     product?.variants?.length > 0
-      ? product.variants
+      ? product.variants.map((v: any) => ({
+          id: v.id,
+          size: v.size ?? "M",
+          color: v.color ?? "",
+          colorHex: v.colorHex ?? "#c8b8a0",
+          sku: v.sku ?? "",
+          stock: v.stock ?? 0,
+        }))
       : [
           {
             size: "M",
@@ -70,17 +86,32 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             colorHex: "#c8b8a0",
             sku: "",
             stock: 0,
-            price: null,
           },
         ],
   );
 
+  // ─── Images State ─────────────────────────────────────────────────────────
   const [images, setImages] = useState<string[]>(
     product?.images?.map((i: any) => i.url) ?? [],
   );
-
   const [imageUrl, setImageUrl] = useState("");
 
+  // ─── Coupons State ────────────────────────────────────────────────────────
+  const [coupons, setCoupons] = useState<CouponInput[]>(
+    product?.coupons?.map((c: any) => ({
+      code: c.code,
+      type: c.type,
+      value: c.value,
+      minOrder: c.minOrder,
+      usageLimit: c.usageLimit,
+      expiresAt: c.expiresAt
+        ? new Date(c.expiresAt).toISOString().split("T")[0]
+        : "",
+      isActive: c.isActive,
+    })) ?? [],
+  );
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
   function update(field: string, value: any) {
     setForm((f) => ({ ...f, [field]: value }));
   }
@@ -96,14 +127,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
   function addVariant() {
     setVariants((v) => [
       ...v,
-      {
-        size: "M",
-        color: "",
-        colorHex: "#c8b8a0",
-        sku: "",
-        stock: 0,
-        price: null,
-      },
+      { size: "M", color: "", colorHex: "#c8b8a0", sku: "", stock: 0 },
     ]);
   }
 
@@ -129,30 +153,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
     setImages((imgs) => imgs.filter((_, i) => i !== index));
   }
 
-  type CouponInput = {
-    code: string;
-    type: string;
-    value: number;
-    minOrder: number | null;
-    usageLimit: number | null;
-    expiresAt: string;
-    isActive: boolean;
-  };
-
-  const [coupons, setCoupons] = useState<CouponInput[]>(
-    product?.coupons?.map((c: any) => ({
-      code: c.code,
-      type: c.type,
-      value: c.value,
-      minOrder: c.minOrder,
-      usageLimit: c.usageLimit,
-      expiresAt: c.expiresAt
-        ? new Date(c.expiresAt).toISOString().split("T")[0]
-        : "",
-      isActive: c.isActive,
-    })) ?? [],
-  );
-
   function updateCoupon(index: number, field: string, value: any) {
     setCoupons((c) =>
       c.map((coupon, i) =>
@@ -161,6 +161,31 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
     );
   }
 
+  // ─── Pricing Calculation ──────────────────────────────────────────────────
+  function calcPricing() {
+    const sp = parseFloat(sellingPrice) || 0;
+    const dv = parseFloat(discountValue) || 0;
+    let finalPrice = sp;
+    let comparePrice: number | null = null;
+    let discountAmt = 0;
+    let discountPct = 0;
+
+    if (discountType === "PERCENT" && dv > 0) {
+      discountAmt = Math.round((sp * dv) / 100);
+      finalPrice = sp - discountAmt;
+      comparePrice = sp;
+      discountPct = dv;
+    } else if (discountType === "AMOUNT" && dv > 0) {
+      discountAmt = dv;
+      finalPrice = sp - dv;
+      comparePrice = sp;
+      discountPct = Math.round((dv / sp) * 100);
+    }
+
+    return { sp, finalPrice, comparePrice, discountAmt, discountPct };
+  }
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -169,35 +194,20 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
       return;
     }
 
+    const { finalPrice, comparePrice } = calcPricing();
+
     setLoading(true);
-
-    const { finalPrice, newCompare } = (() => {
-      const sp = parseFloat(sellingPrice) || 0;
-      const dv = parseFloat(discountValue) || 0;
-      let finalPrice = sp;
-      let newCompare = parseFloat(comparePrice) || null;
-
-      if (discountType === "PERCENT" && dv > 0) {
-        finalPrice = Math.round(sp - (sp * dv) / 100);
-        newCompare = sp;
-      } else if (discountType === "AMOUNT" && dv > 0) {
-        finalPrice = Math.round(sp - dv);
-        newCompare = sp;
-      }
-      return { finalPrice, newCompare };
-    })();
-
     try {
       const payload = {
         ...form,
         price: finalPrice,
-        comparePrice: newCompare,
+        comparePrice: comparePrice,
         costPrice: parseFloat(costPrice) || null,
         tags: form.tags
           .split(",")
           .map((t: string) => t.trim())
           .filter(Boolean),
-        variants,
+        variants: variants.map(({ id, ...v }) => v),
         images,
         coupons: coupons.map((c) => ({
           ...c,
@@ -205,6 +215,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
           expiresAt: c.expiresAt ? new Date(c.expiresAt) : null,
         })),
       };
+
       const url = editing
         ? `/api/products/${product.id}/full`
         : "/api/products";
@@ -217,7 +228,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
       });
 
       if (!res.ok) throw new Error();
-
       toast.success(editing ? "Product updated!" : "Product created!");
       router.push("/admin/products");
       router.refresh();
@@ -228,21 +238,20 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
     }
   }
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <form
       onSubmit={handleSubmit}
       className="grid grid-cols-1 xl:grid-cols-3 gap-6"
     >
-      {/* LEFT — Main Info */}
+      {/* ── LEFT — Main Info ─────────────────────────────────────────────── */}
       <div className="xl:col-span-2 flex flex-col gap-6">
         {/* Basic Info */}
         <div className="bg-white border border-brand-200 p-6">
           <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">
             Basic Information
           </h2>
-
           <div className="flex flex-col gap-4">
-            {/* Name */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                 Product Name *
@@ -257,7 +266,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
               />
             </div>
 
-            {/* Slug */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                 Slug
@@ -271,7 +279,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
               />
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                 Description
@@ -285,7 +292,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
               />
             </div>
 
-            {/* Tags */}
             <div>
               <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                 Tags (comma separated)
@@ -306,7 +312,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
           <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">
             Pricing
           </h2>
-
           <div className="flex flex-col gap-4">
             {/* Cost Price */}
             <div>
@@ -350,8 +355,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
               <p className="text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-3">
                 Discount (optional)
               </p>
-
-              {/* Type selector */}
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {[
                   { id: "NONE", label: "No Discount" },
@@ -376,7 +379,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                 ))}
               </div>
 
-              {/* Discount value input */}
               {discountType !== "NONE" && (
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
@@ -406,27 +408,10 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             {/* Preview */}
             {(() => {
               const cp = parseFloat(costPrice) || 0;
-              const sp = parseFloat(sellingPrice) || 0;
-              const dv = parseFloat(discountValue) || 0;
-
+              const { sp, finalPrice, discountAmt, discountPct } =
+                calcPricing();
               if (sp === 0) return null;
 
-              // Calculate final customer price
-              let finalPrice = sp;
-              let discountAmt = 0;
-              let discountPct = 0;
-
-              if (discountType === "PERCENT" && dv > 0) {
-                discountAmt = Math.round((sp * dv) / 100);
-                finalPrice = sp - discountAmt;
-                discountPct = dv;
-              } else if (discountType === "AMOUNT" && dv > 0) {
-                discountAmt = dv;
-                finalPrice = sp - dv;
-                discountPct = Math.round((dv / sp) * 100);
-              }
-
-              // Profit calculation
               const profit = cp > 0 ? finalPrice - cp : null;
               const isProfit = profit !== null && profit >= 0;
 
@@ -468,24 +453,21 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                       <span>Selling Price</span>
                       <span>৳{sp.toLocaleString()}</span>
                     </div>
-
                     {discountAmt > 0 && (
                       <div className="flex justify-between text-[10px] text-amber-600 tracking-wide">
                         <span>
-                          Discount
+                          Discount{" "}
                           {discountType === "PERCENT"
-                            ? ` (${dv}% = ৳${discountAmt.toLocaleString()})`
-                            : ` (৳${discountAmt.toLocaleString()} = ${discountPct}% off)`}
+                            ? `(${discountValue}% = ৳${discountAmt.toLocaleString()})`
+                            : `(৳${discountAmt.toLocaleString()} = ${discountPct}% off)`}
                         </span>
                         <span>− ৳{discountAmt.toLocaleString()}</span>
                       </div>
                     )}
-
                     <div className="flex justify-between text-xs text-brand-900 font-medium tracking-wide border-t border-brand-200 pt-1.5">
                       <span>Customer Pays</span>
                       <span>৳{finalPrice.toLocaleString()}</span>
                     </div>
-
                     {cp > 0 && (
                       <>
                         <div className="flex justify-between text-[10px] text-brand-500 tracking-wide border-t border-brand-200 pt-1.5">
@@ -511,7 +493,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                         </div>
                       </>
                     )}
-
                     {cp === 0 && (
                       <p className="text-[9px] text-brand-400 italic mt-1">
                         Set cost price to see profit/loss
@@ -544,7 +525,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             {variants.map((variant, i) => (
               <div
                 key={i}
-                className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-brand-50 border border-brand-200 relative"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-brand-50 border border-brand-200 relative"
               >
                 {/* Size */}
                 <div>
@@ -556,7 +537,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     onChange={(e) => updateVariant(i, "size", e.target.value)}
                     className="w-full bg-white border border-brand-300 px-2 py-2 text-xs text-brand-800 outline-none focus:border-brand-700"
                   >
-                    {sizes.map((s) => (
+                    {SIZES.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -574,7 +555,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     value={variant.color}
                     onChange={(e) => updateVariant(i, "color", e.target.value)}
                     className="w-full bg-white border border-brand-300 px-2 py-2 text-xs text-brand-800 outline-none focus:border-brand-700"
-                    placeholder="Natural"
+                    placeholder="e.g. Natural"
                   />
                 </div>
 
@@ -582,6 +563,9 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                 <div>
                   <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
                     SKU
+                    <span className="ml-1 text-brand-300 normal-case tracking-normal">
+                      (unique code)
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -601,30 +585,10 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     type="number"
                     value={variant.stock}
                     onChange={(e) =>
-                      updateVariant(i, "stock", parseInt(e.target.value))
+                      updateVariant(i, "stock", parseInt(e.target.value) || 0)
                     }
                     className="w-full bg-white border border-brand-300 px-2 py-2 text-xs text-brand-800 outline-none focus:border-brand-700"
                     min={0}
-                  />
-                </div>
-
-                {/* Price Override */}
-                <div>
-                  <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                    Price Override
-                  </label>
-                  <input
-                    type="number"
-                    value={variant.price ?? ""}
-                    onChange={(e) =>
-                      updateVariant(
-                        i,
-                        "price",
-                        e.target.value ? parseFloat(e.target.value) : null,
-                      )
-                    }
-                    className="w-full bg-white border border-brand-300 px-2 py-2 text-xs text-brand-800 outline-none focus:border-brand-700"
-                    placeholder="Optional"
                   />
                 </div>
 
@@ -649,7 +613,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             Product Images
           </h2>
 
-          {/* Add Image URL */}
           <div className="flex gap-2 mb-4">
             <input
               type="url"
@@ -670,8 +633,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             </button>
           </div>
 
-          {/* Image Preview Grid */}
-          {images.length > 0 && (
+          {images.length > 0 ? (
             <div className="grid grid-cols-4 gap-3">
               {images.map((url, i) => (
                 <div key={i} className="relative group">
@@ -680,9 +642,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                       src={url}
                       alt=""
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "";
-                      }}
                     />
                   </div>
                   <button
@@ -693,16 +652,14 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                     <X size={10} strokeWidth={2} />
                   </button>
                   {i === 0 && (
-                    <span className="absolute bottom-1 left-1 text-[8px] bg-brand-900 text-brand-100 px-1.5 py-0.5 tracking-wide">
+                    <span className="absolute bottom-1 left-1 text-[8px] bg-brand-900 text-brand-100 px-1.5 py-0.5">
                       Primary
                     </span>
                   )}
                 </div>
               ))}
             </div>
-          )}
-
-          {images.length === 0 && (
+          ) : (
             <div className="border-2 border-dashed border-brand-300 py-10 text-center">
               <p className="text-xs text-brand-400 tracking-wide">
                 No images added yet
@@ -715,14 +672,13 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
         </div>
       </div>
 
-      {/* RIGHT — Settings */}
+      {/* ── RIGHT — Settings ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-6">
         {/* Publish */}
         <div className="bg-white border border-brand-200 p-6">
           <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">
             Publish
           </h2>
-
           <div className="flex flex-col gap-3 mb-5">
             {[
               { label: "Active", field: "isActive", desc: "Visible on store" },
@@ -773,8 +729,9 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-900 text-brand-100 text-[11px] tracking-[0.18em] uppercase py-3.5 hover:bg-brand-800 transition-colors disabled:opacity-70"
+            className="w-full bg-brand-900 text-brand-100 text-[11px] tracking-[0.18em] uppercase py-3.5 hover:bg-brand-800 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
           >
+            <Check size={13} strokeWidth={2} />
             {loading
               ? editing
                 ? "Saving..."
@@ -827,208 +784,209 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             </div>
           )}
         </div>
-      </div>
-      {/* Coupons */}
-      <div className="bg-white border border-brand-200 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium">
-            Coupons
-          </h2>
-          <button
-            type="button"
-            onClick={() =>
-              setCoupons((c) => [
-                ...c,
-                {
-                  code: "",
-                  type: "PERCENT",
-                  value: 0,
-                  minOrder: null,
-                  usageLimit: null,
-                  expiresAt: "",
-                  isActive: true,
-                },
-              ])
-            }
-            className="flex items-center gap-1.5 text-[10px] text-brand-600 hover:text-brand-900 tracking-wide border border-brand-300 px-3 py-1.5 transition-colors"
-          >
-            <Plus size={12} strokeWidth={1.5} />
-            Add Coupon
-          </button>
-        </div>
 
-        {coupons.length === 0 ? (
-          <p className="text-[10px] text-brand-400 tracking-wide text-center py-4">
-            No coupons for this product yet
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {coupons.map((coupon, i) => (
-              <div
-                key={i}
-                className="p-4 bg-brand-50 border border-brand-200 relative flex flex-col gap-3"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCoupons((c) => c.filter((_, idx) => idx !== i))
-                  }
-                  className="absolute top-2 right-2 text-brand-400 hover:text-red-500 transition-colors"
+        {/* Coupons */}
+        <div className="bg-white border border-brand-200 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium">
+              Coupons
+            </h2>
+            <button
+              type="button"
+              onClick={() =>
+                setCoupons((c) => [
+                  ...c,
+                  {
+                    code: "",
+                    type: "PERCENT",
+                    value: 0,
+                    minOrder: null,
+                    usageLimit: null,
+                    expiresAt: "",
+                    isActive: true,
+                  },
+                ])
+              }
+              className="flex items-center gap-1.5 text-[10px] text-brand-600 hover:text-brand-900 tracking-wide border border-brand-300 px-3 py-1.5 transition-colors"
+            >
+              <Plus size={12} strokeWidth={1.5} />
+              Add Coupon
+            </button>
+          </div>
+
+          {coupons.length === 0 ? (
+            <p className="text-[10px] text-brand-400 tracking-wide text-center py-4">
+              No coupons for this product yet
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {coupons.map((coupon, i) => (
+                <div
+                  key={i}
+                  className="p-4 bg-brand-50 border border-brand-200 relative flex flex-col gap-3"
                 >
-                  <X size={13} strokeWidth={1.5} />
-                </button>
-
-                {/* Code */}
-                <div>
-                  <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                    Coupon Code *
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={coupon.code}
-                      onChange={(e) =>
-                        updateCoupon(i, "code", e.target.value.toUpperCase())
-                      }
-                      className="flex-1 bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-widest uppercase"
-                      placeholder="QUEEN20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateCoupon(
-                          i,
-                          "code",
-                          "QUEEN" +
-                            Math.random()
-                              .toString(36)
-                              .substring(2, 7)
-                              .toUpperCase(),
-                        )
-                      }
-                      className="text-[9px] text-brand-600 border border-brand-300 px-2 hover:border-brand-700 transition-colors whitespace-nowrap"
-                    >
-                      Generate
-                    </button>
-                  </div>
-                </div>
-
-                {/* Type */}
-                <div className="grid grid-cols-2 gap-2">
-                  {["PERCENT", "FIXED"].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => updateCoupon(i, "type", t)}
-                      className={`py-2 text-[9px] tracking-[0.1em] uppercase border transition-colors ${
-                        coupon.type === t
-                          ? "bg-brand-900 border-brand-900 text-brand-100"
-                          : "border-brand-300 text-brand-600 hover:border-brand-600"
-                      }`}
-                    >
-                      {t === "PERCENT" ? "% Off" : "৳ Fixed"}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Value */}
-                <div>
-                  <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                    Value {coupon.type === "PERCENT" ? "(%)" : "(৳)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={coupon.value || ""}
-                    onChange={(e) =>
-                      updateCoupon(i, "value", parseFloat(e.target.value))
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCoupons((c) => c.filter((_, idx) => idx !== i))
                     }
-                    className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
-                    placeholder={coupon.type === "PERCENT" ? "20" : "500"}
-                    min={0}
-                  />
-                </div>
+                    className="absolute top-2 right-2 text-brand-400 hover:text-red-500 transition-colors"
+                  >
+                    <X size={13} strokeWidth={1.5} />
+                  </button>
 
-                {/* Min Order + Usage Limit */}
-                <div className="grid grid-cols-2 gap-2">
+                  {/* Code */}
                   <div>
                     <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                      Min Order (৳)
+                      Coupon Code *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={coupon.code}
+                        onChange={(e) =>
+                          updateCoupon(i, "code", e.target.value.toUpperCase())
+                        }
+                        className="flex-1 bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-widest uppercase"
+                        placeholder="QUEEN20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateCoupon(
+                            i,
+                            "code",
+                            "QUEEN" +
+                              Math.random()
+                                .toString(36)
+                                .substring(2, 7)
+                                .toUpperCase(),
+                          )
+                        }
+                        className="text-[9px] text-brand-600 border border-brand-300 px-2 hover:border-brand-700 transition-colors whitespace-nowrap"
+                      >
+                        Generate
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Type */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {["PERCENT", "FIXED"].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => updateCoupon(i, "type", t)}
+                        className={`py-2 text-[9px] tracking-widest uppercase border transition-colors ${
+                          coupon.type === t
+                            ? "bg-brand-900 border-brand-900 text-brand-100"
+                            : "border-brand-300 text-brand-600 hover:border-brand-600"
+                        }`}
+                      >
+                        {t === "PERCENT" ? "% Off" : "৳ Fixed"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Value */}
+                  <div>
+                    <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
+                      Value {coupon.type === "PERCENT" ? "(%)" : "(৳)"}
                     </label>
                     <input
                       type="number"
-                      value={coupon.minOrder ?? ""}
+                      value={coupon.value || ""}
                       onChange={(e) =>
-                        updateCoupon(
-                          i,
-                          "minOrder",
-                          e.target.value ? parseFloat(e.target.value) : null,
-                        )
+                        updateCoupon(i, "value", parseFloat(e.target.value))
                       }
                       className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
-                      placeholder="Optional"
+                      placeholder={coupon.type === "PERCENT" ? "20" : "500"}
                       min={0}
                     />
                   </div>
+
+                  {/* Min Order + Usage Limit */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
+                        Min Order (৳)
+                      </label>
+                      <input
+                        type="number"
+                        value={coupon.minOrder ?? ""}
+                        onChange={(e) =>
+                          updateCoupon(
+                            i,
+                            "minOrder",
+                            e.target.value ? parseFloat(e.target.value) : null,
+                          )
+                        }
+                        className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
+                        placeholder="Optional"
+                        min={0}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
+                        Usage Limit
+                      </label>
+                      <input
+                        type="number"
+                        value={coupon.usageLimit ?? ""}
+                        onChange={(e) =>
+                          updateCoupon(
+                            i,
+                            "usageLimit",
+                            e.target.value ? parseInt(e.target.value) : null,
+                          )
+                        }
+                        className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
+                        placeholder="Unlimited"
+                        min={1}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expiry */}
                   <div>
                     <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                      Usage Limit
+                      Expiry Date
                     </label>
                     <input
-                      type="number"
-                      value={coupon.usageLimit ?? ""}
+                      type="date"
+                      value={coupon.expiresAt}
                       onChange={(e) =>
-                        updateCoupon(
-                          i,
-                          "usageLimit",
-                          e.target.value ? parseInt(e.target.value) : null,
-                        )
+                        updateCoupon(i, "expiresAt", e.target.value)
                       }
                       className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
-                      placeholder="Unlimited"
-                      min={1}
                     />
                   </div>
-                </div>
 
-                {/* Expiry */}
-                <div>
-                  <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                    Expiry Date
-                  </label>
-                  <input
-                    type="date"
-                    value={coupon.expiresAt}
-                    onChange={(e) =>
-                      updateCoupon(i, "expiresAt", e.target.value)
-                    }
-                    className="w-full bg-white border border-brand-300 px-3 py-2 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
-                  />
-                </div>
-
-                {/* Active toggle */}
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-[10px] text-brand-600 tracking-wide">
-                    Active
-                  </span>
-                  <div
-                    onClick={() =>
-                      updateCoupon(i, "isActive", !coupon.isActive)
-                    }
-                    className={`w-8 h-4 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${
-                      coupon.isActive ? "bg-brand-900" : "bg-brand-300"
-                    }`}
-                  >
+                  {/* Active */}
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-[10px] text-brand-600 tracking-wide">
+                      Active
+                    </span>
                     <div
-                      className={`w-3 h-3 rounded-full bg-white transition-transform ${
-                        coupon.isActive ? "translate-x-4" : "translate-x-0"
+                      onClick={() =>
+                        updateCoupon(i, "isActive", !coupon.isActive)
+                      }
+                      className={`w-8 h-4 rounded-full transition-colors cursor-pointer flex items-center px-0.5 ${
+                        coupon.isActive ? "bg-brand-900" : "bg-brand-300"
                       }`}
-                    />
-                  </div>
-                </label>
-              </div>
-            ))}
-          </div>
-        )}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full bg-white transition-transform ${
+                          coupon.isActive ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </form>
   );

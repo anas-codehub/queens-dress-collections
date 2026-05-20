@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Upload, X, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,19 @@ import { toast } from "sonner";
 type Props = {
   productId: string;
   onSuccess: () => void;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+// Facebook Pixel tracking utility
+const trackEvent = (eventName: string, params?: Record<string, any>) => {
+  if (typeof window !== "undefined" && (window as any).fbq) {
+    (window as any).fbq("track", eventName, params);
+  }
 };
 
 export default function ReviewForm({ productId, onSuccess }: Props) {
@@ -19,7 +32,24 @@ export default function ReviewForm({ productId, onSuccess }: Props) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch product details for tracking
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const res = await fetch(`/api/products/${productId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProduct(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch product:", error);
+      }
+    }
+    fetchProduct();
+  }, [productId]);
 
   async function uploadPhoto(file: File): Promise<string | null> {
     if (!file.type.startsWith("image/")) {
@@ -91,6 +121,17 @@ export default function ReviewForm({ productId, onSuccess }: Props) {
         toast.error(data.error);
         return;
       }
+
+      // Track successful review submission
+      trackEvent("SubmitReview", {
+        content_name: product?.name || `Product ${productId}`,
+        content_ids: [productId],
+        content_type: "product",
+        value: product?.price || 0,
+        currency: "BDT",
+        review_rating: rating,
+        review_title: title || "No title",
+      });
 
       setSubmitted(true);
       toast.success("Review submitted! It will appear after approval.");

@@ -69,13 +69,15 @@ export default async function AdminDashboard() {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <p className="text-[10px] text-brand-500 tracking-[0.2em] uppercase mb-1">
           Overview
         </p>
-        <h1 className="font-serif text-3xl text-brand-900">Dashboard</h1>
+        <h1 className="font-serif text-2xl lg:text-3xl text-brand-900">
+          Dashboard
+        </h1>
       </div>
 
       {/* Stats Cards */}

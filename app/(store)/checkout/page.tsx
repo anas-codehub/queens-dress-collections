@@ -9,6 +9,7 @@ import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useDeliveryCharge } from "@/hooks/use-delivery-charge";
 import { ALL_DISTRICTS } from "@/lib/districts";
+import { trackEvent } from "@/components/shared/meta-pixel";
 
 const steps = ["Shipping", "Payment", "Review"];
 
@@ -78,6 +79,16 @@ export default function CheckoutPage() {
       }
 
       clearCart();
+      // Track Purchase
+      trackEvent("Purchase", {
+        value: total,
+        currency: "BDT",
+        contents: items.map((item) => ({
+          id: item.productId,
+          quantity: item.quantity,
+        })),
+        content_type: "product",
+      });
       toast.success("Order placed successfully! 🎉");
       router.push("/account/orders");
     } catch {

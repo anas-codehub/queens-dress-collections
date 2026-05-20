@@ -72,7 +72,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 min-h-screen bg-brand-950 flex flex-col sticky top-0">
+    <aside className="hidden lg:flex w-60 min-h-screen bg-brand-950 flex-col sticky top-0">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-brand-900">
         <p className="font-serif text-lg tracking-[0.2em] text-brand-200 uppercase">

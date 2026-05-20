@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "@/components/store/product/product-card";
+import { trackEvent } from "@/components/shared/meta-pixel";
 
 type Product = {
   id: string;
@@ -32,7 +33,8 @@ export default function SearchClient({
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (input.trim() !== query) {
+      if (input.trim().length > 2) {
+        trackEvent("Search", { search_string: input.trim() });
         startTransition(() => {
           router.push(
             input.trim()

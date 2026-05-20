@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Heart,
@@ -14,6 +14,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { toast } from "sonner";
 import ReviewsSection from "./reviews-section";
+import { trackEvent } from "@/components/shared/meta-pixel";
 
 type ProductWithDetails = {
   id: string;
@@ -41,8 +42,25 @@ type ProductWithDetails = {
   }[];
 };
 
-function Accordion({ title, content }: { title: string; content: string[] }) {
+function Accordion({
+  title,
+  content,
+  product,
+}: {
+  title: string;
+  content: string[];
+  product: ProductWithDetails;
+}) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    trackEvent("ViewContent", {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: "product",
+      value: product.price,
+      currency: "BDT",
+    });
+  }, [product]);
   return (
     <div className="border-b border-brand-200">
       <button
@@ -171,6 +189,16 @@ export default function ProductDetails({
       color: selectedColor.name,
       quantity: 1,
     });
+
+    // Track AddToCart event
+    trackEvent("AddToCart", {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: "product",
+      value: product.price,
+      currency: "BDT",
+    });
+
     toast.success("Added to cart");
     openCart();
   }
@@ -420,6 +448,7 @@ export default function ProductDetails({
                 key={item.title}
                 title={item.title}
                 content={item.content}
+                product={product}
               />
             ))}
           </div>
