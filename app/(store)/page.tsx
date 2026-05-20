@@ -7,6 +7,20 @@ import PromoBanner from "@/components/store/promo-banner";
 import BestSellers from "@/components/store/product/best-sellers";
 import Features from "@/components/store/features";
 import Newsletter from "@/components/store/newsletter";
+import { Metadata } from "next";
+import { OrganizationJsonLd, WebsiteJsonLd } from "@/components/shared/json-ld";
+
+export const metadata: Metadata = {
+  title: "Queens Dress Collection — Timeless Women's Fashion",
+  description:
+    "Shop the latest women's dresses, evening gowns, and co-ord sets. Free delivery on orders over ৳3,000. New arrivals every week.",
+  openGraph: {
+    title: "Queens Dress Collection — Timeless Women's Fashion",
+    description:
+      "Shop the latest women's dresses, evening gowns, and co-ord sets.",
+    url: "/",
+  },
+};
 
 async function getSettings() {
   const settings = await db.siteSettings.findMany();
@@ -22,6 +36,8 @@ export default async function HomePage() {
 
   return (
     <>
+      <WebsiteJsonLd />
+      <OrganizationJsonLd />
       <Hero settings={settings} />
       <MarqueeStrip settings={settings} />
       <Categories />

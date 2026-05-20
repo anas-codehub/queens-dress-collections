@@ -2,12 +2,18 @@ import { db } from "@/lib/db";
 import { Suspense } from "react";
 import ShopFilters from "@/components/store/filters/shop-filters";
 import ShopGrid from "@/components/store/filters/shop-grid";
+import { Metadata } from "next";
 
-export const metadata = {
-  title: "Shop",
-  description: "Browse our full collection of women's dresses and styles.",
+export const metadata: Metadata = {
+  title: "Shop All Dresses",
+  description:
+    "Browse our full collection of women's dresses — maxi, midi, evening gowns, casual dresses and co-ord sets. Filter by size, color and price.",
+  openGraph: {
+    title: "Shop All Dresses | Queens Dress Collection",
+    description: "Browse our full collection of women's dresses.",
+    url: "/shop",
+  },
 };
-
 export default async function ShopPage({
   searchParams,
 }: {
