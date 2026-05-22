@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
+import { sendAdminNewOrder, sendOrderConfirmation } from "@/lib/emails/send"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -93,6 +94,36 @@ export async function POST(req: Request) {
         },
       },
     })
+
+    const user = await db.user.findUnique({ where: { id: session.user.id } })
+
+    sendOrderConfirmation({
+  to:            user?.email ?? shippingInfo.email,
+  orderNumber:   order.orderNumber,
+  customerName:  shippingInfo.name,
+  items:         items.map((item: any) => ({
+    name:     item.name,
+    quantity: item.quantity,
+    price:    item.price,
+    size:     item.size  ?? null,
+    color:    item.color ?? null,
+  })),
+  subtotal,
+  shipping,
+  total:         order.total,
+  address:       shippingInfo,
+  paymentMethod,
+})
+
+sendAdminNewOrder({
+  orderNumber:   order.orderNumber,
+  customerName:  shippingInfo.name,
+  customerPhone: shippingInfo.phone,
+  total:         order.total,
+  itemCount:     items.length,
+  district:      shippingInfo.district,
+  paymentMethod,
+})
 
     return NextResponse.json({ success: true, orderId: order.id })
   } catch (e) {

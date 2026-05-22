@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, X, Check } from "lucide-react";
 import slugify from "slugify";
 import { motion } from "framer-motion";
+import ImageUpload from "./image-upload";
 
 type Category = {
   id: string;
@@ -609,66 +610,14 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
 
         {/* Images */}
         <div className="bg-white border border-brand-200 p-6">
-          <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">
+          <h2 className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-2">
             Product Images
           </h2>
-
-          <div className="flex gap-2 mb-4">
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="flex-1 bg-brand-50 border border-brand-300 px-4 py-2.5 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
-              placeholder="Paste image URL..."
-              onKeyDown={(e) =>
-                e.key === "Enter" && (e.preventDefault(), addImage())
-              }
-            />
-            <button
-              type="button"
-              onClick={addImage}
-              className="bg-brand-900 text-brand-100 text-[10px] tracking-[0.12em] uppercase px-4 hover:bg-brand-800 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-
-          {images.length > 0 ? (
-            <div className="grid grid-cols-4 gap-3">
-              {images.map((url, i) => (
-                <div key={i} className="relative group">
-                  <div className="aspect-square bg-brand-100 overflow-hidden">
-                    <img
-                      src={url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X size={10} strokeWidth={2} />
-                  </button>
-                  {i === 0 && (
-                    <span className="absolute bottom-1 left-1 text-[8px] bg-brand-900 text-brand-100 px-1.5 py-0.5">
-                      Primary
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="border-2 border-dashed border-brand-300 py-10 text-center">
-              <p className="text-xs text-brand-400 tracking-wide">
-                No images added yet
-              </p>
-              <p className="text-[10px] text-brand-300 mt-1 tracking-wide">
-                Paste an image URL above to add images
-              </p>
-            </div>
-          )}
+          <p className="text-[10px] text-brand-400 tracking-wide mb-5">
+            Upload directly from your computer or phone. Images are
+            automatically optimized.
+          </p>
+          <ImageUpload images={images} onChange={setImages} max={6} />
         </div>
       </div>
 
