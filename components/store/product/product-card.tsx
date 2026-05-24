@@ -75,11 +75,19 @@ export default function ProductCard({ product }: { product: Product }) {
         {/* Image Container */}
         <div className="relative bg-brand-200 aspect-[3/4] overflow-hidden mb-3">
           {/* Placeholder — replace with Next Image when real photos available */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-serif text-4xl text-brand-400 select-none">
-              QDC
-            </span>
-          </div>
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-serif text-4xl text-brand-400 select-none">
+                QDC
+              </span>
+            </div>
+          )}
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">

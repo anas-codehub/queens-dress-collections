@@ -34,6 +34,23 @@ const nextConfig: NextConfig = {
             key:   "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
           },
+          {
+            key:   "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key:   "Access-Control-Allow-Origin",
+            value: process.env.NEXT_PUBLIC_APP_URL ?? "*",
+          },
+          {
+            key:   "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          },
         ],
       },
     ]
