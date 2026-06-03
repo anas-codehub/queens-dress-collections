@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCartStore } from "@/stores/cart-store";
 import { toast } from "sonner";
+import Image from "next/image";
 
 type Product = {
   id: string;
@@ -76,10 +77,12 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="relative bg-brand-200 aspect-[3/4] overflow-hidden mb-3">
           {/* Placeholder — replace with Next Image when real photos available */}
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">

@@ -15,6 +15,7 @@ import { useWishlistStore } from "@/stores/wishlist-store";
 import { toast } from "sonner";
 import ReviewsSection from "./reviews-section";
 import { trackEvent } from "@/components/shared/meta-pixel";
+import Image from "next/image";
 
 type ProductWithDetails = {
   id: string;
@@ -42,25 +43,8 @@ type ProductWithDetails = {
   }[];
 };
 
-function Accordion({
-  title,
-  content,
-  product,
-}: {
-  title: string;
-  content: string[];
-  product: ProductWithDetails;
-}) {
+function Accordion({ title, content }: { title: string; content: string[] }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    trackEvent("ViewContent", {
-      content_name: product.name,
-      content_ids: [product.id],
-      content_type: "product",
-      value: product.price,
-      currency: "BDT",
-    });
-  }, [product]);
   return (
     <div className="border-b border-brand-200">
       <button
@@ -104,12 +88,22 @@ export default function ProductDetails({
 }: {
   product: ProductWithDetails;
 }) {
-  // Extract unique sizes from variants
+  // ─── Track ViewContent on mount ─────────────────────────────────────────
+  useEffect(() => {
+    trackEvent("ViewContent", {
+      content_name: product.name,
+      content_ids: [product.id],
+      content_type: "product",
+      value: product.price,
+      currency: "BDT",
+    });
+  }, [product.id]);
+
+  // ─── Sizes & Colors from variants ───────────────────────────────────────
   const sizes = [
     ...new Set(product.variants.map((v) => v.size).filter(Boolean)),
   ] as string[];
 
-  // Extract unique colors from variants
   const colors = product.variants
     .filter((v) => v.color)
     .reduce(
@@ -159,12 +153,14 @@ export default function ProductDetails({
       )
     : null;
 
+  // ─── State ────────────────────────────────────────────────────────────────
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState(
     colors[0] ?? { name: "Default", hex: "#c8b8a0" },
   );
   const [activeImage, setActiveImage] = useState(0);
 
+  // ─── Store ────────────────────────────────────────────────────────────────
   const addToCart = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
   const {
@@ -174,6 +170,7 @@ export default function ProductDetails({
   } = useWishlistStore();
   const isWishlisted = isInWishlist(product.id);
 
+  // ─── Handlers ─────────────────────────────────────────────────────────────
   function handleAddToCart() {
     if (!selectedSize && sizes.length > 0) {
       toast.error("Please select a size");
@@ -189,8 +186,6 @@ export default function ProductDetails({
       color: selectedColor.name,
       quantity: 1,
     });
-
-    // Track AddToCart event
     trackEvent("AddToCart", {
       content_name: product.name,
       content_ids: [product.id],
@@ -198,7 +193,6 @@ export default function ProductDetails({
       value: product.price,
       currency: "BDT",
     });
-
     toast.success("Added to cart");
     openCart();
   }
@@ -219,6 +213,7 @@ export default function ProductDetails({
     }
   }
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto px-5 lg:px-10 py-10">
       {/* Breadcrumb */}
@@ -236,17 +231,19 @@ export default function ProductDetails({
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
-                  className={`w-16 h-20 bg-brand-200 flex items-center justify-center border-2 transition-colors overflow-hidden ${
+                  className={`w-16 h-20 bg-brand-200 flex items-center justify-center border-2 transition-colors overflow-hidden relative ${
                     activeImage === i
                       ? "border-brand-900"
                       : "border-transparent hover:border-brand-400"
                   }`}
                 >
                   {img.url ? (
-                    <img
+                    <Image
                       src={img.url}
-                      alt=""
-                      className="w-full h-full object-cover"
+                      alt={product.name}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
                     />
                   ) : (
                     <span className="font-serif text-sm text-brand-400">
@@ -259,32 +256,31 @@ export default function ProductDetails({
           )}
 
           {/* Main Image */}
-          <div className="flex-1 bg-brand-200 aspect-[3/4] flex items-center justify-center relative overflow-hidden">
-            {product.images[activeImage]?.url ? (
-              <img
-                src={product.images[activeImage].url}
+          <div className="flex-1 bg-brand-200 aspect-[3/4] relative overflow-hidden">
+            {product.images[activeImage]?.url || primaryImage ? (
+              <Image
+                src={product.images[activeImage]?.url || primaryImage}
                 alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            ) : primaryImage ? (
-              <img
-                src={primaryImage}
-                alt={product.name}
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
               />
             ) : (
-              <span className="font-serif text-6xl text-brand-400 select-none">
-                QDC
-              </span>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="font-serif text-6xl text-brand-400 select-none">
+                  QDC
+                </span>
+              </div>
             )}
 
             {product.isNew && (
-              <span className="absolute top-4 left-4 bg-brand-900 text-brand-100 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1">
+              <span className="absolute top-4 left-4 bg-brand-900 text-brand-100 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
                 New
               </span>
             )}
             {discount && (
-              <span className="absolute top-4 right-4 bg-amber-700 text-amber-50 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1">
+              <span className="absolute top-4 right-4 bg-amber-700 text-amber-50 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
                 -{discount}%
               </span>
             )}
@@ -448,57 +444,11 @@ export default function ProductDetails({
                 key={item.title}
                 title={item.title}
                 content={item.content}
-                product={product}
               />
             ))}
           </div>
 
           {/* Reviews */}
-          {product.reviews.length > 0 && (
-            <div className="mt-8 border-t border-brand-200 pt-6">
-              <p className="text-[11px] text-brand-800 tracking-[0.15em] uppercase font-medium mb-4">
-                Customer Reviews ({product.reviews.length})
-              </p>
-              <div className="flex flex-col gap-4">
-                {product.reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="border-b border-brand-100 pb-4"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-brand-800 font-medium tracking-wide">
-                        {review.user.name ?? "Anonymous"}
-                      </p>
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span
-                            key={i}
-                            className={`text-xs ${
-                              i < review.rating
-                                ? "text-amber-500"
-                                : "text-brand-300"
-                            }`}
-                          >
-                            ★
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    {review.title && (
-                      <p className="text-xs text-brand-700 font-medium mb-1">
-                        {review.title}
-                      </p>
-                    )}
-                    {review.body && (
-                      <p className="text-[11px] text-brand-500 tracking-wide leading-relaxed">
-                        {review.body}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           <ReviewsSection productId={product.id} />
         </motion.div>
       </div>
