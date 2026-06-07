@@ -11,7 +11,7 @@ app.prepare().then(() => {
   createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
-  }).listen(port, () => {
+  }).listen(port, "0.0.0.0", () => {
     console.log(`> Ready on port ${port}`);
   });
 });
