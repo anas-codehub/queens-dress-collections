@@ -1,1 +1,3 @@
-export default function proxy() {}
+export default function proxy() {
+    return { port: 3000 };
+}
