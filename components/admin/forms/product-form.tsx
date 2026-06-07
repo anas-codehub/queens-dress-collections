@@ -37,7 +37,7 @@ type ProductFormProps = {
   product?: any;
 };
 
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const SIZES = ["36", "38", "40", "42", "44", "46", "48", "50"];
 
 export default function ProductForm({ categories, product }: ProductFormProps) {
   const router = useRouter();

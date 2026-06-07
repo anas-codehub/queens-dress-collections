@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,7 +11,10 @@ import {
   ToggleRight,
   X,
   Check,
+  Upload,
+  Loader2,
 } from "lucide-react";
+import Image from "next/image";
 
 type Category = {
   id: string;
@@ -32,6 +35,8 @@ export default function AdminCategoriesClient({
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -68,6 +73,40 @@ export default function AdminCategoriesClient({
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, ""),
     }));
+  }
+
+  async function handleImageUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files allowed");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        toast.error("Upload failed");
+        return;
+      }
+
+      const data = await res.json();
+      setForm((f) => ({ ...f, image: data.url }));
+      toast.success("Image uploaded!");
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -134,7 +173,6 @@ export default function AdminCategoriesClient({
       {/* Categories List */}
       <div className="xl:col-span-2">
         <div className="bg-white border border-brand-200">
-          {/* Table Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-brand-200">
             <p className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium">
               All Categories ({categories.length})
@@ -151,12 +189,12 @@ export default function AdminCategoriesClient({
             </button>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-brand-100 bg-brand-50">
                   {[
+                    "Image",
                     "Name",
                     "Slug",
                     "Products",
@@ -177,7 +215,7 @@ export default function AdminCategoriesClient({
                 {categories.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center py-12 text-xs text-brand-400 tracking-wide"
                     >
                       No categories yet. Add your first one!
@@ -189,6 +227,27 @@ export default function AdminCategoriesClient({
                       key={cat.id}
                       className="border-b border-brand-100 hover:bg-brand-50 transition-colors"
                     >
+                      {/* Image */}
+                      <td className="px-4 py-3">
+                        <div className="w-10 h-12 bg-brand-200 relative overflow-hidden">
+                          {cat.image ? (
+                            <Image
+                              src={cat.image}
+                              alt={cat.name}
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-[8px] text-brand-400 font-serif">
+                                QDC
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
                       <td className="px-4 py-3">
                         <p className="text-xs text-brand-800 font-medium tracking-wide">
                           {cat.name}
@@ -200,12 +259,12 @@ export default function AdminCategoriesClient({
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-brand-600 tracking-wide">
+                        <span className="text-xs text-brand-600">
                           {cat._count.products}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-brand-600 tracking-wide">
+                        <span className="text-xs text-brand-600">
                           {cat.sortOrder}
                         </span>
                       </td>
@@ -272,6 +331,7 @@ export default function AdminCategoriesClient({
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Name */}
               <div>
                 <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                   Name *
@@ -286,6 +346,7 @@ export default function AdminCategoriesClient({
                 />
               </div>
 
+              {/* Slug */}
               <div>
                 <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                   Slug
@@ -301,21 +362,75 @@ export default function AdminCategoriesClient({
                 />
               </div>
 
+              {/* Image Upload */}
               <div>
                 <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                  Image URL
+                  Category Image
                 </label>
+
+                {/* Preview */}
+                {form.image && (
+                  <div className="relative w-full aspect-[3/4] mb-3 overflow-hidden bg-brand-100 group">
+                    <Image
+                      src={form.image}
+                      alt="Category"
+                      fill
+                      sizes="300px"
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, image: "" }))}
+                      className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload button */}
                 <input
-                  type="url"
-                  value={form.image}
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, image: e.target.value }))
+                    e.target.files?.[0] && handleImageUpload(e.target.files[0])
                   }
-                  className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
-                  placeholder="https://..."
                 />
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full border-2 border-dashed border-brand-300 py-4 flex flex-col items-center gap-2 hover:border-brand-500 hover:bg-brand-50 transition-colors disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2
+                        size={18}
+                        strokeWidth={1.5}
+                        className="text-brand-400 animate-spin"
+                      />
+                      <span className="text-[10px] text-brand-400 tracking-wide">
+                        Uploading...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload
+                        size={18}
+                        strokeWidth={1.5}
+                        className="text-brand-400"
+                      />
+                      <span className="text-[10px] text-brand-400 tracking-wide">
+                        {form.image ? "Change image" : "Upload image"}
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
 
+              {/* Sort Order */}
               <div>
                 <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
                   Sort Order
@@ -326,7 +441,7 @@ export default function AdminCategoriesClient({
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      sortOrder: parseInt(e.target.value),
+                      sortOrder: parseInt(e.target.value) || 0,
                     }))
                   }
                   className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 outline-none focus:border-brand-700 transition-colors"
@@ -334,6 +449,7 @@ export default function AdminCategoriesClient({
                 />
               </div>
 
+              {/* Active */}
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-xs text-brand-700 tracking-wide">
                   Active

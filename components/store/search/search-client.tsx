@@ -116,16 +116,7 @@ export default function SearchClient({
                 Popular Searches
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {[
-                  "Maxi Dress",
-                  "Evening Gown",
-                  "Linen",
-                  "Wrap Dress",
-                  "Co-ord Set",
-                  "Satin",
-                  "Casual",
-                  "Wedding",
-                ].map((term) => (
+                {["Three Piece", "Two Piece"].map((term) => (
                   <button
                     key={term}
                     onClick={() => {

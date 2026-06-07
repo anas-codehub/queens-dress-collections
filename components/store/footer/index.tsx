@@ -61,7 +61,7 @@ export default function Footer() {
                 </svg>
               </a>
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/queensdresscollection"
                 target="_blank"
                 rel="noreferrer"
                 className="text-brand-600 hover:text-brand-300 transition-colors"

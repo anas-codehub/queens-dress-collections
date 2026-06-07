@@ -1,20 +1,21 @@
-import { Truck, RefreshCw, Lock, Headphones } from "lucide-react";
+import { Truck, RefreshCw, Lock, Headphones, BadgeCheck } from "lucide-react";
 
 const features = [
   {
     icon: Truck,
-    title: "Free Delivery",
-    desc: "On orders over ৳3,000",
+    title: "Fast Delivery",
+    desc: "Delivery within 48 hours",
   },
-  {
-    icon: RefreshCw,
-    title: "Easy Returns",
-    desc: "30-day return policy",
-  },
+
   {
     icon: Lock,
-    title: "Secure Payment",
-    desc: "100% safe checkout",
+    title: "Cash On Delivery",
+    desc: "Pay only after confirming the product",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Authentic Products",
+    desc: "100% genuine and trusted quality",
   },
   {
     icon: Headphones,

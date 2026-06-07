@@ -7,8 +7,7 @@ export default function MarqueeStrip({
     ? JSON.parse(settings.marqueeItems)
     : [
         "New Arrivals",
-        "Summer 2026",
-        "Free Returns",
+        "Fast Delivery",
         "Exclusively For Her",
         "Queens Dress Collection",
       ];
