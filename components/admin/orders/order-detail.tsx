@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown, ArrowLeft } from "lucide-react";
+import { ChevronDown, ArrowLeft, Truck } from "lucide-react";
 import Link from "next/link";
 
 type OrderItem = {
@@ -52,6 +52,7 @@ type Order = {
     value: number;
   } | null;
   items: OrderItem[];
+  steadfastConsignment: string | null;
 };
 
 const allStatuses = [
@@ -87,6 +88,7 @@ export default function AdminOrderDetail({ order }: { order: Order }) {
   const [payment, setPayment] = useState(order.paymentStatus);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState(order.notes ?? "");
+  const [sendingToSteadfast, setSendingToSteadfast] = useState(false);
 
   async function handleUpdate() {
     setLoading(true);
@@ -103,6 +105,29 @@ export default function AdminOrderDetail({ order }: { order: Order }) {
       toast.error("Failed to update order");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSendToSteadfast() {
+    if (!confirm("Send this order to Steadfast for delivery?")) return;
+    setSendingToSteadfast(true);
+    try {
+      const res = await fetch("/api/steadfast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send to Steadfast");
+        return;
+      }
+      toast.success(`Sent to Steadfast! Consignment: ${data.consignment_id}`);
+      router.refresh();
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setSendingToSteadfast(false);
     }
   }
 
@@ -328,6 +353,27 @@ export default function AdminOrderDetail({ order }: { order: Order }) {
               >
                 {loading ? "Saving..." : "Save Changes"}
               </button>
+
+              {/* Steadfast Button */}
+              {!order.steadfastConsignment ? (
+                <button
+                  onClick={handleSendToSteadfast}
+                  disabled={sendingToSteadfast}
+                  className="w-full flex items-center justify-center gap-2 border border-brand-300 text-brand-700 text-[11px] tracking-[0.15em] uppercase py-3 hover:bg-brand-900 hover:text-brand-100 hover:border-brand-900 transition-colors disabled:opacity-50 mt-2"
+                >
+                  <Truck size={14} strokeWidth={1.5} />
+                  {sendingToSteadfast ? "Sending..." : "Send to Steadfast"}
+                </button>
+              ) : (
+                <div className="mt-2 p-3 bg-green-50 border border-green-200 text-center">
+                  <p className="text-[10px] text-green-600 tracking-wide uppercase font-medium mb-0.5">
+                    Sent to Steadfast ✓
+                  </p>
+                  <p className="text-[11px] text-green-700 font-mono">
+                    {order.steadfastConsignment}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

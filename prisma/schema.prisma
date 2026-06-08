@@ -267,22 +267,23 @@ model Coupon {
 }
 
 model Order {
-  id            String        @id @default(cuid())
-  orderNumber   String        @unique
-  userId        String
-  addressId     String
-  couponId      String?
-  subtotal      Float
-  discount      Float         @default(0)
-  shipping      Float         @default(0)
-  total         Float
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(UNPAID)
-  paymentMethod PaymentMethod @default(COD)
-  paymentRef    String?
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique
+  userId               String
+  addressId            String
+  couponId             String?
+  subtotal             Float
+  discount             Float         @default(0)
+  shipping             Float         @default(0)
+  total                Float
+  status               OrderStatus   @default(PENDING)
+  paymentStatus        PaymentStatus @default(UNPAID)
+  paymentMethod        PaymentMethod @default(COD)
+  steadfastConsignment String?
+  paymentRef           String?
+  notes                String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   user    User        @relation(fields: [userId], references: [id])
   address Address     @relation(fields: [addressId], references: [id])

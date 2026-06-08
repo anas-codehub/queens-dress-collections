@@ -17,9 +17,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [coupon, setCoupon] = useState("");
-  const [payment, setPayment] = useState<"COD" | "BKASH" | "NAGAD" | "CARD">(
-    "COD",
-  );
+  const payment = "COD";
 
   const { items, getTotalPrice, clearCart } = useCartStore();
   const router = useRouter();
@@ -420,102 +418,20 @@ export default function CheckoutPage() {
                   Payment Method
                 </h2>
 
-                {[
-                  {
-                    id: "COD",
-                    label: "Cash on Delivery",
-                    desc: "Pay when your order arrives",
-                  },
-                  {
-                    id: "BKASH",
-                    label: "bKash",
-                    desc: "Pay via bKash mobile banking",
-                  },
-                  {
-                    id: "NAGAD",
-                    label: "Nagad",
-                    desc: "Pay via Nagad mobile banking",
-                  },
-                  {
-                    id: "CARD",
-                    label: "Credit / Debit Card",
-                    desc: "Visa, Mastercard accepted",
-                  },
-                ].map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPayment(method.id as typeof payment)}
-                    className={`flex items-center gap-4 p-4 border text-left transition-colors ${
-                      payment === method.id
-                        ? "border-brand-900 bg-brand-100"
-                        : "border-brand-300 hover:border-brand-500"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        payment === method.id
-                          ? "border-brand-900"
-                          : "border-brand-400"
-                      }`}
-                    >
-                      {payment === method.id && (
-                        <div className="w-2 h-2 rounded-full bg-brand-900" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-brand-900 font-medium tracking-wide">
-                        {method.label}
-                      </p>
-                      <p className="text-[10px] text-brand-500 tracking-wide mt-0.5">
-                        {method.desc}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-
-                {payment === "CARD" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col gap-4 p-4 bg-brand-100 border border-brand-300"
-                  >
-                    <div>
-                      <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                        Card Number
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs outline-none focus:border-brand-700 transition-colors tracking-widest"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                          Expiry
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs outline-none focus:border-brand-700 transition-colors tracking-widest"
-                          placeholder="MM / YY"
-                          maxLength={7}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                          CVV
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs outline-none focus:border-brand-700 transition-colors tracking-widest"
-                          placeholder="123"
-                          maxLength={4}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
+                {/* Payment Options — COD only */}
+                <div className="p-4 border border-brand-900 bg-brand-100 flex items-center gap-4">
+                  <div className="w-4 h-4 rounded-full border-2 border-brand-900 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-brand-900" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-brand-900 font-medium tracking-wide">
+                      Cash on Delivery
+                    </p>
+                    <p className="text-[10px] text-brand-500 tracking-wide mt-0.5">
+                      Pay when your order arrives at your door
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex gap-3 mt-2">
                   <button
