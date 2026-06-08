@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Heart,
@@ -88,6 +88,39 @@ export default function ProductDetails({
 }: {
   product: ProductWithDetails;
 }) {
+  // ─── Zoom state ───────────────────────────────────────────────────────────
+  const [zoomed, setZoomed] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y });
+  }
+
+  // ─── Touch/swipe state ────────────────────────────────────────────────────
+  const touchRef = useRef<HTMLDivElement>(null);
+  const touchStart = useRef<number>(0);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStart.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const diff = touchStart.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) < 50) return; // ignore small swipes
+
+    if (diff > 0) {
+      // swipe left — next image
+      setActiveImage((prev) =>
+        prev < product.images.length - 1 ? prev + 1 : prev,
+      );
+    } else {
+      // swipe right — prev image
+      setActiveImage((prev) => (prev > 0 ? prev - 1 : prev));
+    }
+  }
   // ─── Track ViewContent on mount ─────────────────────────────────────────
   useEffect(() => {
     trackEvent("ViewContent", {
@@ -223,15 +256,16 @@ export default function ProductDetails({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
         {/* LEFT — Images */}
+        {/* LEFT — Images */}
         <div className="flex gap-3">
-          {/* Thumbnails */}
+          {/* Thumbnails — desktop only */}
           {product.images.length > 1 && (
             <div className="hidden sm:flex flex-col gap-2">
               {product.images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
-                  className={`w-16 h-20 bg-brand-200 flex items-center justify-center border-2 transition-colors overflow-hidden relative ${
+                  className={`w-16 h-20 bg-brand-200 flex items-center justify-center border-2 transition-colors overflow-hidden relative shrink-0 ${
                     activeImage === i
                       ? "border-brand-900"
                       : "border-transparent hover:border-brand-400"
@@ -256,33 +290,120 @@ export default function ProductDetails({
           )}
 
           {/* Main Image */}
-          <div className="flex-1 bg-brand-200 aspect-[3/4] relative overflow-hidden">
-            {product.images[activeImage]?.url || primaryImage ? (
-              <Image
-                src={product.images[activeImage]?.url || primaryImage}
-                alt={product.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="font-serif text-6xl text-brand-400 select-none">
-                  QDC
-                </span>
-              </div>
-            )}
+          <div className="flex-1 flex flex-col gap-2">
+            {/* Main image with zoom */}
+            <div
+              className="bg-brand-200 aspect-[3/4] relative overflow-hidden cursor-zoom-in"
+              onMouseMove={handleMouseMove}
+              onMouseEnter={() => setZoomed(true)}
+              onMouseLeave={() => setZoomed(false)}
+            >
+              {product.images[activeImage]?.url || primaryImage ? (
+                <>
+                  {/* Normal image */}
+                  <Image
+                    src={product.images[activeImage]?.url || primaryImage}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className={`object-cover transition-opacity duration-200 ${zoomed ? "opacity-0" : "opacity-100"}`}
+                    priority
+                  />
 
-            {product.isNew && (
-              <span className="absolute top-4 left-4 bg-brand-900 text-brand-100 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
-                New
-              </span>
-            )}
-            {discount && (
-              <span className="absolute top-4 right-4 bg-amber-700 text-amber-50 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
-                -{discount}%
-              </span>
+                  {/* Zoomed image */}
+                  {zoomed && (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `url(${product.images[activeImage]?.url || primaryImage})`,
+                        backgroundSize: "250%",
+                        backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                        backgroundRepeat: "no-repeat",
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="font-serif text-6xl text-brand-400 select-none">
+                    QDC
+                  </span>
+                </div>
+              )}
+
+              {product.isNew && (
+                <span className="absolute top-4 left-4 bg-brand-900 text-brand-100 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
+                  New
+                </span>
+              )}
+              {discount && (
+                <span className="absolute top-4 right-4 bg-amber-700 text-amber-50 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1 z-10">
+                  -{discount}%
+                </span>
+              )}
+
+              {/* Zoom hint */}
+              {!zoomed && product.images[activeImage]?.url && (
+                <div className="absolute bottom-3 right-3 bg-brand-50/80 px-2 py-1 text-[9px] text-brand-600 tracking-wide hidden sm:block">
+                  Hover to zoom
+                </div>
+              )}
+            </div>
+
+            {/* Mobile swipe dots */}
+            {product.images.length > 1 && (
+              <div className="sm:hidden">
+                {/* Swipeable thumbnails row */}
+                <div
+                  ref={touchRef}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide pb-1"
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  {product.images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`w-14 h-16 shrink-0 relative overflow-hidden border-2 transition-colors ${
+                        activeImage === i
+                          ? "border-brand-900"
+                          : "border-transparent"
+                      }`}
+                    >
+                      {img.url ? (
+                        <Image
+                          src={img.url}
+                          alt={product.name}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-brand-200 flex items-center justify-center">
+                          <span className="font-serif text-xs text-brand-400">
+                            QDC
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dot indicators */}
+                <div className="flex justify-center gap-1.5 mt-2">
+                  {product.images.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`rounded-full transition-all ${
+                        activeImage === i
+                          ? "w-4 h-1.5 bg-brand-900"
+                          : "w-1.5 h-1.5 bg-brand-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
