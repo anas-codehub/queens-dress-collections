@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import MetaPixel from "@/components/shared/meta-pixel";
 import { Suspense } from "react";
 import Navbar from "@/components/store/Navbar";
+import GoogleAnalytics from "@/components/shared/google-analytics";
 
 export default async function StoreLayout({
   children,
@@ -18,6 +19,7 @@ export default async function StoreLayout({
     <SessionProvider session={session}>
       <Suspense>
         <MetaPixel />
+        <GoogleAnalytics />
       </Suspense>
       <Navbar />
       <CartDrawer />

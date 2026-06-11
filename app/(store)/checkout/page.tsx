@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useDeliveryCharge } from "@/hooks/use-delivery-charge";
 import { ALL_DISTRICTS } from "@/lib/districts";
 import { trackEvent } from "@/components/shared/meta-pixel";
+import { trackGAEvent } from "@/components/shared/google-analytics";
 
 const steps = ["Shipping", "Payment", "Review"];
 
@@ -77,7 +78,19 @@ export default function CheckoutPage() {
       }
 
       clearCart();
-      // Track Purchase
+
+      trackGAEvent("purchase", {
+        transaction_id: `QDC-${Date.now()}`,
+        value: total,
+        currency: "BDT",
+        items: items.map((item) => ({
+          item_id: item.productId,
+          item_name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      });
+
       trackEvent("Purchase", {
         value: total,
         currency: "BDT",

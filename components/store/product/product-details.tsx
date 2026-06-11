@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import ReviewsSection from "./reviews-section";
 import { trackEvent } from "@/components/shared/meta-pixel";
 import Image from "next/image";
+import { trackGAEvent } from "@/components/shared/google-analytics";
 
 type ProductWithDetails = {
   id: string;
@@ -205,6 +206,19 @@ export default function ProductDetails({
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   function handleAddToCart() {
+    trackGAEvent("add_to_cart", {
+      currency: "BDT",
+      value: product.price,
+      items: [
+        {
+          item_id: product.id,
+          item_name: product.name,
+          price: product.price,
+          quantity: 1,
+        },
+      ],
+    });
+
     if (!selectedSize && sizes.length > 0) {
       toast.error("Please select a size");
       return;
