@@ -138,18 +138,6 @@ export default function ProductDetails({
     ...new Set(product.variants.map((v) => v.size).filter(Boolean)),
   ] as string[];
 
-  const colors = product.variants
-    .filter((v) => v.color)
-    .reduce(
-      (acc, v) => {
-        if (!acc.find((c) => c.name === v.color)) {
-          acc.push({ name: v.color!, hex: v.colorHex ?? "#c8b8a0" });
-        }
-        return acc;
-      },
-      [] as { name: string; hex: string }[],
-    );
-
   const primaryImage =
     product.images.find((i) => i.isPrimary)?.url ??
     product.images[0]?.url ??
@@ -189,9 +177,7 @@ export default function ProductDetails({
 
   // ─── State ────────────────────────────────────────────────────────────────
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState(
-    colors[0] ?? { name: "Default", hex: "#c8b8a0" },
-  );
+
   const [activeImage, setActiveImage] = useState(0);
 
   // ─── Store ────────────────────────────────────────────────────────────────
@@ -230,7 +216,7 @@ export default function ProductDetails({
       image: primaryImage,
       price: product.price,
       size: selectedSize ?? undefined,
-      color: selectedColor.name,
+
       quantity: 1,
     });
     trackEvent("AddToCart", {
@@ -461,31 +447,6 @@ export default function ProductDetails({
             <p className="text-xs text-brand-600 leading-relaxed tracking-wide mb-6 border-t border-brand-200 pt-6">
               {product.description}
             </p>
-          )}
-
-          {/* Color Selector */}
-          {colors.length > 0 && (
-            <div className="mb-5">
-              <p className="text-[10px] text-brand-700 tracking-[0.15em] uppercase mb-3">
-                Color —{" "}
-                <span className="text-brand-500">{selectedColor.name}</span>
-              </p>
-              <div className="flex gap-2">
-                {colors.map((color) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(color)}
-                    title={color.name}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      selectedColor.name === color.name
-                        ? "border-brand-900 scale-110"
-                        : "border-transparent hover:border-brand-400"
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                  />
-                ))}
-              </div>
-            </div>
           )}
 
           {/* Size Selector */}

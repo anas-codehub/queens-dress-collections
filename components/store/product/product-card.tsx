@@ -20,7 +20,13 @@ type Product = {
   isSale?: boolean;
 };
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({
+  product,
+  small = false,
+}: {
+  product: Product;
+  small?: boolean;
+}) {
   const {
     addItem: addToWishlist,
     removeItem,
@@ -135,15 +141,22 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         {/* Product Info */}
+        {/* Product Info */}
         <div>
-          <p className="text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
+          <p
+            className={`text-brand-500 tracking-[0.12em] uppercase mb-1 ${small ? "text-[8px]" : "text-[9px]"}`}
+          >
             {product.category}
           </p>
-          <h3 className="text-sm text-brand-800 tracking-wide mb-2 group-hover:text-brand-600 transition-colors">
+          <h3
+            className={`text-brand-800 tracking-wide mb-2 group-hover:text-brand-600 transition-colors ${small ? "text-xs" : "text-sm"}`}
+          >
             {product.name}
           </h3>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-brand-900">
+            <span
+              className={`font-medium text-brand-900 ${small ? "text-xs" : "text-sm"}`}
+            >
               ৳{product.price.toLocaleString()}
             </span>
             {product.comparePrice && (

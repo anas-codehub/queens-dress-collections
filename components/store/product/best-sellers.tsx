@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 async function getBestSellers() {
   return db.product.findMany({
     where: { isActive: true, isFeatured: true },
-    take: 4,
+    take: 8,
     orderBy: { createdAt: "desc" },
     include: {
       images: { where: { isPrimary: true }, take: 1 },
@@ -50,7 +50,7 @@ export default async function BestSellers() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
           {products.map((product) => (
             <ProductCard
               key={product.id}

@@ -2,18 +2,14 @@ import { db } from "@/lib/db";
 import { Suspense } from "react";
 import ShopFilters from "@/components/store/filters/shop-filters";
 import ShopGrid from "@/components/store/filters/shop-grid";
-import { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Shop All Dresses",
-  description:
-    "Browse our full collection of women's dresses — maxi, midi, evening gowns, casual dresses and co-ord sets. Filter by size, color and price.",
-  openGraph: {
-    title: "Shop All Dresses | Queens Dress Collection",
-    description: "Browse our full collection of women's dresses.",
-    url: "/shop",
-  },
+export const metadata = {
+  title: "Shop",
+  description: "Browse our full collection of women's dresses and styles.",
 };
+
+const PRODUCTS_PER_PAGE = 50;
+
 export default async function ShopPage({
   searchParams,
 }: {
@@ -22,6 +18,7 @@ export default async function ShopPage({
     sizes?: string;
     colors?: string;
     price?: string;
+    page?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -29,6 +26,7 @@ export default async function ShopPage({
   const sizes = params.sizes?.split(",").filter(Boolean) ?? [];
   const colors = params.colors?.split(",").filter(Boolean) ?? [];
   const priceRange = params.price ?? "";
+  const page = parseInt(params.page ?? "1");
 
   // Parse price range
   let minPrice: number | undefined;
@@ -50,46 +48,35 @@ export default async function ShopPage({
     }
   }
 
-  // Build where clause
   const where: any = { isActive: true };
-
-  if (catSlugs.length > 0) {
-    where.category = { slug: { in: catSlugs } };
-  }
-
-  if (sizes.length > 0) {
+  if (catSlugs.length > 0) where.category = { slug: { in: catSlugs } };
+  if (sizes.length > 0)
     where.variants = { some: { size: { in: sizes }, stock: { gt: 0 } } };
-  }
-
-  if (colors.length > 0) {
+  if (colors.length > 0)
     where.variants = {
       ...where.variants,
-      some: {
-        ...(where.variants?.some ?? {}),
-        color: { in: colors },
-      },
+      some: { ...(where.variants?.some ?? {}), color: { in: colors } },
     };
-  }
-
-  if (minPrice !== undefined && maxPrice !== undefined) {
+  if (minPrice !== undefined && maxPrice !== undefined)
     where.price = { gte: minPrice, lte: maxPrice };
-  }
 
-  const [products, categories, allColors] = await Promise.all([
+  const [products, totalCount, categories, allColors] = await Promise.all([
     db.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      take: PRODUCTS_PER_PAGE,
+      skip: (page - 1) * PRODUCTS_PER_PAGE,
       include: {
         images: { where: { isPrimary: true }, take: 1 },
         category: true,
         variants: true,
       },
     }),
+    db.product.count({ where }),
     db.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
     }),
-    // Get all unique colors from variants
     db.productVariant.findMany({
       where: { color: { not: null } },
       select: { color: true },
@@ -97,6 +84,7 @@ export default async function ShopPage({
     }),
   ]);
 
+  const totalPages = Math.ceil(totalCount / PRODUCTS_PER_PAGE);
   const uniqueColors = allColors
     .map((v) => v.color!)
     .filter(Boolean)
@@ -125,7 +113,7 @@ export default async function ShopPage({
             All Products
           </h1>
           <p className="text-xs text-brand-500 tracking-wide hidden sm:block">
-            {products.length} product{products.length !== 1 ? "s" : ""}
+            {totalCount} product{totalCount !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -137,7 +125,12 @@ export default async function ShopPage({
           </Suspense>
         </aside>
         <div className="flex-1">
-          <ShopGrid products={mappedProducts} />
+          <ShopGrid
+            products={mappedProducts}
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+          />
         </div>
       </div>
     </div>

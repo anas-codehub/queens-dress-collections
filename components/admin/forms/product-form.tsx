@@ -526,7 +526,7 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
             {variants.map((variant, i) => (
               <div
                 key={i}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-brand-50 border border-brand-200 relative"
+                className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-brand-50 border border-brand-200 relative"
               >
                 {/* Size */}
                 <div>
@@ -544,20 +544,6 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
                       </option>
                     ))}
                   </select>
-                </div>
-
-                {/* Color */}
-                <div>
-                  <label className="block text-[9px] text-brand-500 tracking-[0.12em] uppercase mb-1">
-                    Color
-                  </label>
-                  <input
-                    type="text"
-                    value={variant.color}
-                    onChange={(e) => updateVariant(i, "color", e.target.value)}
-                    className="w-full bg-white border border-brand-300 px-2 py-2 text-xs text-brand-800 outline-none focus:border-brand-700"
-                    placeholder="e.g. Natural"
-                  />
                 </div>
 
                 {/* SKU */}
