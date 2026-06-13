@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Shield,
   ChevronDown,
+  Zap,
 } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
@@ -17,6 +18,7 @@ import ReviewsSection from "./reviews-section";
 import { trackEvent } from "@/components/shared/meta-pixel";
 import Image from "next/image";
 import { trackGAEvent } from "@/components/shared/google-analytics";
+import { useRouter } from "next/navigation";
 
 type ProductWithDetails = {
   id: string;
@@ -183,6 +185,7 @@ export default function ProductDetails({
   // ─── Store ────────────────────────────────────────────────────────────────
   const addToCart = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
+  const router = useRouter();
   const {
     addItem: addToWishlist,
     removeItem,
@@ -244,6 +247,23 @@ export default function ProductDetails({
       });
       toast.success("Added to wishlist");
     }
+  }
+
+  function handleBuyNow() {
+    if (!selectedSize && sizes.length > 0) {
+      toast.error("Please select a size");
+      return;
+    }
+    addToCart({
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      image: primaryImage,
+      price: product.price,
+      size: selectedSize ?? undefined,
+      quantity: 1,
+    });
+    router.push("/checkout");
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -482,28 +502,40 @@ export default function ProductDetails({
           )}
 
           {/* CTA Buttons */}
-          <div className="flex gap-3 mb-6">
+          <div className="flex flex-col gap-3 mb-6">
+            {/* Row 1 — Add to Cart + Wishlist */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-brand-100 text-[11px] tracking-[0.18em] uppercase py-4 hover:bg-brand-800 transition-colors"
+              >
+                <ShoppingBag size={15} strokeWidth={1.5} />
+                Add to Cart
+              </button>
+              <button
+                onClick={handleWishlist}
+                className={`w-14 flex items-center justify-center border transition-colors ${
+                  isWishlisted
+                    ? "bg-brand-900 border-brand-900 text-brand-50"
+                    : "border-brand-300 text-brand-600 hover:border-brand-900 hover:text-brand-900"
+                }`}
+                aria-label="Wishlist"
+              >
+                <Heart
+                  size={16}
+                  strokeWidth={1.5}
+                  className={isWishlisted ? "fill-current" : ""}
+                />
+              </button>
+            </div>
+
+            {/* Row 2 — Buy Now */}
             <button
-              onClick={handleAddToCart}
-              className="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-brand-100 text-[11px] tracking-[0.18em] uppercase py-4 hover:bg-brand-800 transition-colors"
+              onClick={handleBuyNow}
+              className="w-full flex items-center justify-center gap-2 border-2 border-brand-900 text-brand-900 text-[11px] tracking-[0.18em] uppercase py-4 hover:bg-brand-900 hover:text-brand-100 transition-colors"
             >
-              <ShoppingBag size={15} strokeWidth={1.5} />
-              Add to Cart
-            </button>
-            <button
-              onClick={handleWishlist}
-              className={`w-14 flex items-center justify-center border transition-colors ${
-                isWishlisted
-                  ? "bg-brand-900 border-brand-900 text-brand-50"
-                  : "border-brand-300 text-brand-600 hover:border-brand-900 hover:text-brand-900"
-              }`}
-              aria-label="Wishlist"
-            >
-              <Heart
-                size={16}
-                strokeWidth={1.5}
-                className={isWishlisted ? "fill-current" : ""}
-              />
+              <Zap size={15} strokeWidth={1.5} />
+              Buy Now
             </button>
           </div>
 

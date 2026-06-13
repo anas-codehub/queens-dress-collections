@@ -30,7 +30,7 @@ export default async function NewArrivals() {
           </h2>
         </div>
         <Link
-          href="/new-arrivals"
+          href="/shop"
           className="hidden sm:flex items-center gap-2 text-[11px] text-brand-600 hover:text-brand-900 tracking-[0.12em] uppercase transition-colors group"
         >
           View All
@@ -71,7 +71,7 @@ export default async function NewArrivals() {
 
       <div className="mt-8 text-center sm:hidden">
         <Link
-          href="/new-arrivals"
+          href="/shop"
           className="inline-flex items-center gap-2 text-[11px] text-brand-600 tracking-[0.12em] uppercase border-b border-brand-400 pb-0.5"
         >
           View All

@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, ShoppingBag } from "lucide-react";
-import { motion } from "framer-motion";
-import { useWishlistStore } from "@/stores/wishlist-store";
-import { useCartStore } from "@/stores/cart-store";
-import { toast } from "sonner";
 import Image from "next/image";
+import { Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 type Product = {
   id: string;
@@ -27,44 +24,6 @@ export default function ProductCard({
   product: Product;
   small?: boolean;
 }) {
-  const {
-    addItem: addToWishlist,
-    removeItem,
-    isInWishlist,
-  } = useWishlistStore();
-  const addToCart = useCartStore((s) => s.addItem);
-  const wishlisted = isInWishlist(product.id);
-
-  function handleWishlist(e: React.MouseEvent) {
-    e.preventDefault();
-    if (wishlisted) {
-      removeItem(product.id);
-      toast.success("Removed from wishlist");
-    } else {
-      addToWishlist({
-        id: product.id,
-        productId: product.id,
-        name: product.name,
-        image: product.image,
-        price: product.price,
-      });
-      toast.success("Added to wishlist");
-    }
-  }
-
-  function handleAddToCart(e: React.MouseEvent) {
-    e.preventDefault();
-    addToCart({
-      id: product.id,
-      productId: product.id,
-      name: product.name,
-      image: product.image,
-      price: product.price,
-      quantity: 1,
-    });
-    toast.success("Added to cart");
-  }
-
   const discount = product.comparePrice
     ? Math.round(
         ((product.comparePrice - product.price) / product.comparePrice) * 100,
@@ -77,11 +36,11 @@ export default function ProductCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
+      className="group flex flex-col"
     >
-      <Link href={`/product/${product.slug}`} className="group block">
-        {/* Image Container */}
+      {/* Image — clicking goes to product detail */}
+      <Link href={`/product/${product.slug}`} className="block">
         <div className="relative bg-brand-200 aspect-[3/4] overflow-hidden mb-3">
-          {/* Placeholder — replace with Next Image when real photos available */}
           {product.image ? (
             <Image
               src={product.image}
@@ -99,7 +58,7 @@ export default function ProductCard({
           )}
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
             {product.isNew && (
               <span className="bg-brand-900 text-brand-100 text-[9px] tracking-[0.12em] uppercase px-2.5 py-1">
                 New
@@ -111,45 +70,17 @@ export default function ProductCard({
               </span>
             )}
           </div>
-
-          {/* Action buttons — show on hover */}
-          <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleWishlist}
-              className="w-8 h-8 bg-brand-50 flex items-center justify-center hover:bg-brand-900 hover:text-brand-50 transition-colors"
-              aria-label="Add to wishlist"
-            >
-              <Heart
-                size={14}
-                strokeWidth={1.5}
-                className={wishlisted ? "fill-brand-900 text-brand-900" : ""}
-              />
-            </motion.button>
-          </div>
-
-          {/* Add to cart — slides up on hover */}
-          <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <button
-              onClick={handleAddToCart}
-              className="w-full bg-brand-900 text-brand-100 text-[10px] tracking-[0.15em] uppercase py-3 flex items-center justify-center gap-2 hover:bg-brand-800 transition-colors"
-            >
-              <ShoppingBag size={13} strokeWidth={1.5} />
-              Add to Cart
-            </button>
-          </div>
         </div>
 
         {/* Product Info */}
-        {/* Product Info */}
-        <div>
+        <div className="mb-3">
           <p
             className={`text-brand-500 tracking-[0.12em] uppercase mb-1 ${small ? "text-[8px]" : "text-[9px]"}`}
           >
             {product.category}
           </p>
           <h3
-            className={`text-brand-800 tracking-wide mb-2 group-hover:text-brand-600 transition-colors ${small ? "text-xs" : "text-sm"}`}
+            className={`text-brand-800 tracking-wide mb-2 group-hover:text-brand-600 transition-colors line-clamp-2 ${small ? "text-xs" : "text-sm"}`}
           >
             {product.name}
           </h3>
@@ -166,6 +97,15 @@ export default function ProductCard({
             )}
           </div>
         </div>
+      </Link>
+
+      {/* Buy Now button — goes to product detail page */}
+      <Link
+        href={`/product/${product.slug}`}
+        className="mt-auto w-full flex items-center justify-center gap-2 bg-brand-900 text-brand-100 text-[10px] tracking-[0.15em] uppercase py-2.5 hover:bg-brand-800 transition-colors"
+      >
+        <Zap size={12} strokeWidth={1.5} />
+        Buy Now
       </Link>
     </motion.div>
   );

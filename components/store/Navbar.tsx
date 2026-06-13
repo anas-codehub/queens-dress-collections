@@ -17,43 +17,9 @@ import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useMounted } from "@/hooks/use-mounted";
 
-const navLinks = [
-  { label: "New Arrivals", href: "/new-arrivals" },
-  {
-    label: "Collections",
-    href: "/collections",
-    children: [
-      { label: "Summer 2026", href: "/collections/summer-2026" },
-      { label: "Evening Wear", href: "/collections/evening-wear" },
-      { label: "Casual Edit", href: "/collections/casual-edit" },
-      { label: "Bridal", href: "/collections/bridal" },
-      { label: "Workwear", href: "/collections/workwear" },
-    ],
-  },
-  {
-    label: "Dresses",
-    href: "/shop/dresses",
-    children: [
-      { label: "Maxi Dresses", href: "/shop/maxi-dresses" },
-      { label: "Midi Dresses", href: "/shop/midi-dresses" },
-      { label: "Mini Dresses", href: "/shop/mini-dresses" },
-      { label: "Evening Gowns", href: "/shop/evening-gowns" },
-      { label: "Casual Dresses", href: "/shop/casual-dresses" },
-      { label: "Co-ord Sets", href: "/shop/coord-sets" },
-    ],
-  },
-  {
-    label: "Sale",
-    href: "/sale",
-    highlight: true,
-  },
-  { label: "About", href: "/about" },
-];
-
 const announcements = [
-  "Free delivery on orders over ৳3,000",
-  "Use code QUEEN20 for 20% off your first order",
-  "New Summer 2026 Collection — Shop Now",
+  "QUEENS DRESS COLLECTIONS",
+  "DRESS FOR THE WOMEN YOU ARE",
 ];
 
 export default function Navbar() {
@@ -214,65 +180,7 @@ export default function Navbar() {
 
         {/* ── Desktop Nav Links ─────────────────────────────────────── */}
         <div className="hidden lg:block border-t border-brand-200">
-          <div className="max-w-7xl mx-auto px-10">
-            <div className="flex items-center justify-center gap-10 h-10">
-              {navLinks.map((link) => (
-                <div
-                  key={link.label}
-                  className="relative h-full flex items-center"
-                  onMouseEnter={() =>
-                    link.children && setActiveDropdown(link.label)
-                  }
-                  onMouseLeave={() => setActiveDropdown(null)}
-                >
-                  <Link
-                    href={link.href}
-                    className={`
-                      relative flex items-center gap-1 text-[11px] tracking-[0.15em] uppercase transition-colors py-2 group
-                      ${link.highlight ? "text-amber-700 hover:text-amber-900" : "text-brand-600 hover:text-brand-900"}
-                    `}
-                  >
-                    {link.label}
-                    {link.children && (
-                      <ChevronDown
-                        size={11}
-                        strokeWidth={1.5}
-                        className={`transition-transform duration-200 ${activeDropdown === link.label ? "rotate-180" : ""}`}
-                      />
-                    )}
-                    {/* Animated underline */}
-                    <span className="absolute bottom-0 left-0 w-0 h-px bg-brand-900 group-hover:w-full transition-all duration-300" />
-                  </Link>
-
-                  {/* Mega Dropdown */}
-                  <AnimatePresence>
-                    {link.children && activeDropdown === link.label && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 6 }}
-                        transition={{ duration: 0.18 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 bg-brand-50 border border-brand-300 shadow-[0_8px_30px_rgba(58,46,36,0.1)] min-w-52 py-3 z-50"
-                      >
-                        {/* Triangle pointer */}
-                        <div className="absolute -top-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-brand-50 border-l border-t border-brand-300 rotate-45" />
-                        {link.children.map((child) => (
-                          <Link
-                            key={child.label}
-                            href={child.href}
-                            className="flex items-center px-5 py-2.5 text-[11px] text-brand-600 hover:text-brand-900 hover:bg-brand-200 tracking-[0.08em] transition-colors group/item"
-                          >
-                            <span className="w-0 group-hover/item:w-2 h-px bg-brand-600 mr-0 group-hover/item:mr-2 transition-all duration-200 inline-block" />
-                            {child.label}
-                          </Link>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="max-w-7xl mx-auto px-10"></div>
         </div>
       </nav>
 
@@ -317,77 +225,6 @@ export default function Navbar() {
               </div>
 
               {/* Sidebar Nav */}
-              <div className="flex-1 overflow-y-auto">
-                {navLinks.map((link, i) => (
-                  <motion.div
-                    key={link.label}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                  >
-                    <button
-                      onClick={() => {
-                        if (link.children) {
-                          setOpenMobileDropdown(
-                            openMobileDropdown === link.label
-                              ? null
-                              : link.label,
-                          );
-                        } else {
-                          setMobileOpen(false);
-                        }
-                      }}
-                      className={`
-                        w-full flex items-center justify-between px-6 py-4 text-[11px] tracking-[0.18em] uppercase transition-colors border-b border-brand-200
-                        ${link.highlight ? "text-amber-700" : "text-brand-800 hover:bg-brand-200"}
-                      `}
-                    >
-                      {link.children ? (
-                        <span>{link.label}</span>
-                      ) : (
-                        <Link
-                          href={link.href}
-                          onClick={() => setMobileOpen(false)}
-                          className="w-full text-left"
-                        >
-                          {link.label}
-                        </Link>
-                      )}
-                      {link.children && (
-                        <ChevronDown
-                          size={13}
-                          strokeWidth={1.5}
-                          className={`transition-transform duration-200 ${openMobileDropdown === link.label ? "rotate-180" : ""}`}
-                        />
-                      )}
-                    </button>
-
-                    {/* Mobile Sub-links */}
-                    <AnimatePresence>
-                      {link.children && openMobileDropdown === link.label && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden bg-brand-100"
-                        >
-                          {link.children.map((child) => (
-                            <Link
-                              key={child.label}
-                              href={child.href}
-                              onClick={() => setMobileOpen(false)}
-                              className="block px-10 py-3 text-[11px] text-brand-600 hover:text-brand-900 hover:bg-brand-200 tracking-[0.1em] transition-colors border-b border-brand-200"
-                            >
-                              {child.label}
-                            </Link>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                ))}
-              </div>
 
               {/* Sidebar Footer */}
               <div className="border-t border-brand-300 px-6 py-5 flex flex-col gap-4">
