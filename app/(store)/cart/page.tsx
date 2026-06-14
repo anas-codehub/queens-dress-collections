@@ -178,8 +178,8 @@ export default function CartPage() {
               </span>
             </div>
 
-            {/* Coupon */}
-            <div className="flex gap-0 mb-5">
+            {/* Coupon TEMPORARY DISABLED*/}
+            {/* <div className="flex gap-0 mb-5">
               <input
                 type="text"
                 placeholder="Coupon code"
@@ -188,7 +188,7 @@ export default function CartPage() {
               <button className="bg-brand-900 text-brand-100 text-[10px] tracking-[0.12em] uppercase px-4 hover:bg-brand-800 transition-colors">
                 Apply
               </button>
-            </div>
+            </div> */}
 
             <Link
               href="/checkout"

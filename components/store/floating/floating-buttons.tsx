@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUp, MessageCircle, X } from "lucide-react";
 
 // 🔧 Replace these with real links
-const WHATSAPP_NUMBER = "8801700000000"; // with country code, no +
-const FACEBOOK_PAGE = "https://facebook.com/yourpage";
-const MESSENGER_LINK = "https://m.me/yourpage";
+const WHATSAPP_NUMBER = "8801323138145"; // with country code, no +
+const FACEBOOK_PAGE = "https://www.facebook.com/queensdresscollection";
+const MESSENGER_LINK = "https://m.me/queensdresscollection";
 
 export default function FloatingButtons() {
   const [showScrollTop, setShowScrollTop] = useState(false);
