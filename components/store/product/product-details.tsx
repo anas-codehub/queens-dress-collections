@@ -136,9 +136,6 @@ export default function ProductDetails({
   }, [product.id]);
 
   // ─── Sizes & Colors from variants ───────────────────────────────────────
-  const sizes = [
-    ...new Set(product.variants.map((v) => v.size).filter(Boolean)),
-  ] as string[];
 
   const primaryImage =
     product.images.find((i) => i.isPrimary)?.url ??
@@ -161,7 +158,13 @@ export default function ProductDetails({
     : null;
 
   // ─── State ────────────────────────────────────────────────────────────────
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const sizes = [
+    ...new Set(product.variants.map((v) => v.size).filter(Boolean)),
+  ] as string[];
+
+  const [selectedSize, setSelectedSize] = useState<string | null>(
+    sizes.length === 1 ? sizes[0] : null,
+  );
 
   const [activeImage, setActiveImage] = useState(0);
 
