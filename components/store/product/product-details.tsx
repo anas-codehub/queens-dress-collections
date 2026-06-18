@@ -152,23 +152,6 @@ export default function ProductDetails({
         ? product.description.split("\n").filter(Boolean)
         : ["Premium quality fabric", "Expertly crafted"],
     },
-    {
-      title: "Shipping & Returns",
-      content: [
-        "Free delivery on orders over ৳3,000",
-        "Standard delivery 2-4 business days",
-        "Free returns within 30 days",
-      ],
-    },
-    {
-      title: "Size Guide",
-      content: [
-        'XS: Bust 32", Waist 24"',
-        'S: Bust 34", Waist 26"',
-        'M: Bust 36", Waist 28"',
-        'L: Bust 38", Waist 30"',
-      ],
-    },
   ];
 
   const discount = product.comparePrice
@@ -479,9 +462,6 @@ export default function ProductDetails({
                     <span className="text-brand-500">— {selectedSize}</span>
                   )}
                 </p>
-                <button className="text-[10px] text-brand-500 hover:text-brand-900 underline tracking-wide transition-colors">
-                  Size Guide
-                </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {sizes.map((size) => (

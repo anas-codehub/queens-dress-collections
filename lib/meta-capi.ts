@@ -28,6 +28,7 @@ async function hashData(data: string): Promise<string> {
 
 export async function sendCAPIEvent(params: {
   eventName:  string
+  eventId:    string
   email?:     string
   phone?:     string
   ip?:        string

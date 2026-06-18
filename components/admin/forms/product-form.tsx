@@ -74,21 +74,11 @@ export default function ProductForm({ categories, product }: ProductFormProps) {
     product?.variants?.length > 0
       ? product.variants.map((v: any) => ({
           id: v.id,
-          size: v.size ?? "M",
-          color: v.color ?? "",
-          colorHex: v.colorHex ?? "#c8b8a0",
+          size: v.size ?? "",
           sku: v.sku ?? "",
           stock: v.stock ?? 0,
         }))
-      : [
-          {
-            size: "M",
-            color: "Natural",
-            colorHex: "#c8b8a0",
-            sku: "",
-            stock: 0,
-          },
-        ],
+      : [{ size: "36", sku: "", stock: 0 }],
   );
 
   // ─── Images State ─────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { sendAdminNewOrder, sendOrderConfirmation } from "@/lib/emails/send"
 import { sendCAPIEvent } from "@/lib/meta-capi"
+import { sendGAServerEvent } from "@/lib/google-mp"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -96,23 +97,41 @@ export async function POST(req: Request) {
       },
     })
 
+
+sendGAServerEvent({
+  name:          "purchase",
+  value:         order.total,
+  currency:      "BDT",
+  transactionId: order.orderNumber,
+  items:         items.map((i: any) => ({
+    item_id:   i.productId,
+    item_name: i.name,
+    price:     i.price,
+    quantity:  i.quantity,
+  })),
+})
+
+    
+
     const user = await db.user.findUnique({ where: { id: session.user.id } })
 
     const ip        = req.headers.get("x-forwarded-for") ?? ""
     const userAgent = req.headers.get("user-agent") ?? ""
+    const eventId   = `purchase-${order.orderNumber}`
+
 
     sendCAPIEvent({
-      eventName:   "Purchase",
-      email:       user?.email,
-      phone:       shippingInfo.phone,
-      ip,
-      userAgent,
-      value:       order.total,
-      currency:    "BDT",
-      orderId:     order.orderNumber,
-      contentIds:  items.map((i: any) => i.productId),
-    })
-
+  eventName:   "Purchase",
+  eventId,
+  email:       user?.email,
+  phone:       shippingInfo.phone,
+  ip,
+  userAgent,
+  value:       order.total,
+  currency:    "BDT",
+  orderId:     order.orderNumber,
+  contentIds:  items.map((i: any) => i.productId),
+})
     sendOrderConfirmation({
   to:            user?.email ?? shippingInfo.email,
   orderNumber:   order.orderNumber,
