@@ -48,8 +48,12 @@ export default async function AccountPage() {
           {[
             { icon: Package, label: "My Orders", href: "/account/orders" },
             { icon: Heart, label: "My Wishlist", href: "/wishlist" },
-            { icon: MapPin, label: "My Addresses", href: "/account/addresses" },
-            { icon: User, label: "Edit Profile", href: "/account/profile" },
+
+            {
+              icon: User,
+              label: "Edit Profile",
+              href: "/account/edit-profile",
+            },
           ].map((item) => (
             <Link
               key={item.label}
