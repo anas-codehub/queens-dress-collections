@@ -64,7 +64,10 @@ export default function ReviewForm({ productId, onSuccess }: Props) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const res = await fetch("/api/upload/review", {
+      method: "POST",
+      body: formData,
+    });
     if (!res.ok) {
       toast.error("Upload failed");
       return null;
