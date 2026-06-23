@@ -50,7 +50,7 @@ export default async function AdminRecentOrders() {
                   {order.orderNumber}
                 </p>
                 <p className="text-[10px] text-brand-400 tracking-wide mt-0.5">
-                  {order.user.name ?? order.user.email}
+                  {order.user?.name ?? order.user?.email ?? "Unknown user"}
                 </p>
               </div>
               <div className="flex items-center gap-3">

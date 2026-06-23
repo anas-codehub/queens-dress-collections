@@ -104,8 +104,8 @@ export default function CartPage() {
                     onClick={() =>
                       updateQuantity(
                         item.productId,
-                        item.variantId,
                         item.quantity - 1,
+                        item.variantId,
                       )
                     }
                     className="w-8 h-8 flex items-center justify-center text-brand-600 hover:bg-brand-200 transition-colors"
@@ -119,8 +119,8 @@ export default function CartPage() {
                     onClick={() =>
                       updateQuantity(
                         item.productId,
-                        item.variantId,
                         item.quantity + 1,
+                        item.variantId,
                       )
                     }
                     className="w-8 h-8 flex items-center justify-center text-brand-600 hover:bg-brand-200 transition-colors"

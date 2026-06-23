@@ -27,16 +27,20 @@ type Order = {
   total: number;
   status: string;
   paymentStatus: string;
-  paymentMethod: string;
-  paymentRef: string | null;
-  notes: string | null;
+  paymentMethod?: string;
+  paymentRef?: string | null;
+  notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
   user: {
     name: string | null;
     email: string;
     phone: string | null;
-  };
+  } | null;
+
+  guestName: string | null;
+  guestPhone: string | null;
+  guestEmail: string | null;
   address: {
     name: string;
     phone: string;
@@ -46,13 +50,13 @@ type Order = {
     district: string;
     postalCode: string | null;
   };
-  coupon: {
+  coupon?: {
     code: string;
     type: string;
     value: number;
   } | null;
   items: OrderItem[];
-  steadfastConsignment: string | null;
+  steadfastConsignment?: string | null;
 };
 
 const allStatuses = [
@@ -384,22 +388,28 @@ export default function AdminOrderDetail({ order }: { order: Order }) {
             </p>
             <div className="flex flex-col gap-2">
               <p className="text-xs text-brand-800 font-medium tracking-wide">
-                {order.user.name ?? "—"}
+                {order.user?.name ?? order.guestName ?? "—"}
               </p>
-              <a
-                href={`mailto:${order.user.email}`}
-                className="text-xs text-brand-500 hover:text-brand-900 tracking-wide transition-colors"
-              >
-                {order.user.email}
-              </a>
-              {order.user.phone && (
+              {(order.user?.email ?? order.guestEmail) && (
+                <a
+                  href={`mailto:${order.user?.email ?? order.guestEmail}`}
+                  className="text-xs text-brand-500 hover:text-brand-900 tracking-wide transition-colors"
+                >
+                  {order.user?.email ?? order.guestEmail}
+                </a>
+              )}
+              {(order.user?.phone ?? order.guestPhone) && (
                 <p className="text-xs text-brand-500 tracking-wide">
-                  {order.user.phone}
+                  {order.user?.phone ?? order.guestPhone}
+                </p>
+              )}
+              {!order.user && (
+                <p className="text-[10px] text-brand-400 tracking-wide uppercase">
+                  Guest order
                 </p>
               )}
             </div>
           </div>
-
           {/* Shipping Address */}
           <div className="bg-white border border-brand-200 p-6">
             <p className="text-[11px] text-brand-700 tracking-[0.15em] uppercase font-medium mb-5">

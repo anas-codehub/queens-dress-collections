@@ -9,10 +9,10 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { trackEvent } from "@/components/shared/meta-pixel";
 import { trackGAEvent } from "@/components/shared/google-analytics";
+import { useSession } from "next-auth/react";
 
 const steps = ["Shipping", "Review"];
 
-// ─── Delivery Zones ───────────────────────────────────────────────────────────
 const DELIVERY_ZONES = [
   {
     id: "dhaka",
@@ -23,13 +23,13 @@ const DELIVERY_ZONES = [
   {
     id: "subDhaka",
     label: "Sub Dhaka",
-    charge: 120,
+    charge: 100,
     desc: "Gazipur, Narayanganj, Savar, Manikganj, Munshiganj, Narsingdi",
   },
   {
     id: "outsideDhaka",
     label: "Outside Dhaka",
-    charge: 180,
+    charge: 120,
     desc: "All other districts across Bangladesh",
   },
 ];
@@ -37,6 +37,7 @@ const DELIVERY_ZONES = [
 export default function CheckoutPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const { data: session } = useSession();
   const { items, getTotalPrice, clearCart } = useCartStore();
   const router = useRouter();
 
@@ -46,6 +47,7 @@ export default function CheckoutPage() {
     name: "",
     phone: "",
     address: "",
+    guestEmail: "",
   });
 
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
@@ -54,31 +56,48 @@ export default function CheckoutPage() {
     DELIVERY_ZONES.find((z) => z.id === selectedZone)?.charge ?? 0;
   const total = subtotal + deliveryCharge;
 
-  const payment = "COD";
+  function handleNameChange(value: string) {
+    // Only allow English + Bangla letters and spaces
+    if (/^[\u0980-\u09FF a-zA-Z\s]*$/.test(value) || value === "") {
+      setShippingInfo({ ...shippingInfo, name: value });
+    }
+  }
+
+  function handlePhoneChange(value: string) {
+    // Only allow English and Bangla digits, max 11
+    if (/^[0-9০-৯]*$/.test(value) && value.length <= 11) {
+      setShippingInfo({ ...shippingInfo, phone: value });
+    }
+  }
 
   function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Name validation — only letters (English + Bangla) and spaces
-    const nameRegex = /^[\u0980-\u09FF a-zA-Z\s]+$/;
     if (!shippingInfo.name.trim()) {
       toast.error("Please enter your name");
       return;
     }
+
+    const nameRegex = /^[\u0980-\u09FF a-zA-Z\s]+$/;
     if (!nameRegex.test(shippingInfo.name.trim())) {
       toast.error("Name can only contain letters — no numbers or symbols");
       return;
     }
 
-    // Phone validation — only digits (English 0-9 or Bangla ০-৯), exactly 11
-    const phoneDigitsOnly = shippingInfo.phone
-      .replace(/[০-৯]/g, (d) => String("০১২৩৪৫৬৭৮৯".indexOf(d)))
-      .replace(/\D/g, "");
-
     if (!shippingInfo.phone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
+
+    // Convert Bangla digits to English for length check
+    const phoneDigitsOnly = shippingInfo.phone
+      .split("")
+      .map((c) =>
+        "০১২৩৪৫৬৭৮৯".includes(c) ? "০১২৩৪৫৬৭৮৯".indexOf(c).toString() : c,
+      )
+      .join("")
+      .replace(/\D/g, "");
+
     if (phoneDigitsOnly.length !== 11) {
       toast.error("Phone number must be exactly 11 digits");
       return;
@@ -88,6 +107,7 @@ export default function CheckoutPage() {
       toast.error("Please enter your address");
       return;
     }
+
     if (!selectedZone) {
       toast.error("Please select your delivery zone");
       return;
@@ -116,11 +136,11 @@ export default function CheckoutPage() {
             district: zone?.label ?? "",
             postalCode: null,
           },
-          paymentMethod: payment,
+          paymentMethod: "COD",
           subtotal,
           shipping: deliveryCharge,
           total,
-          couponCode: null,
+          guestEmail: session ? null : shippingInfo.guestEmail || null,
         }),
       });
 
@@ -130,10 +150,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Track events
       trackEvent("Purchase", {
         value: total,
         currency: "BDT",
+        eventID: `purchase-${data.orderNumber}`,
         contents: items.map((item) => ({
           id: item.productId,
           quantity: item.quantity,
@@ -142,7 +162,7 @@ export default function CheckoutPage() {
       });
 
       trackGAEvent("purchase", {
-        transaction_id: data.orderId,
+        transaction_id: data.orderNumber,
         value: total,
         currency: "BDT",
         items: items.map((item) => ({
@@ -155,7 +175,13 @@ export default function CheckoutPage() {
 
       clearCart();
       toast.success("Order placed successfully! 🎉");
-      router.push("/account/orders");
+
+      // Logged in → go to orders, guest → go to success page
+      if (session) {
+        router.push("/account/orders");
+      } else {
+        router.push(`/order-success?order=${data.orderNumber}`);
+      }
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -242,9 +268,19 @@ export default function CheckoutPage() {
                 onSubmit={handleShippingSubmit}
                 className="flex flex-col gap-5"
               >
-                <h2 className="font-serif text-2xl text-brand-900 mb-2">
-                  Delivery Information
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-serif text-2xl text-brand-900">
+                    Delivery Information
+                  </h2>
+                  {!session && (
+                    <Link
+                      href="/login"
+                      className="text-[10px] text-brand-500 hover:text-brand-900 tracking-wide underline transition-colors"
+                    >
+                      Login for order history
+                    </Link>
+                  )}
+                </div>
 
                 {/* Name */}
                 <div>
@@ -254,19 +290,13 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     value={shippingInfo.name}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only English letters, Bangla letters and spaces
-                      if (
-                        /^[\u0980-\u09FF a-zA-Z\s]*$/.test(value) ||
-                        value === ""
-                      ) {
-                        setShippingInfo({ ...shippingInfo, name: value });
-                      }
-                    }}
+                    onChange={(e) => handleNameChange(e.target.value)}
                     className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
                     placeholder="Your full name"
                   />
+                  <p className="text-[10px] text-brand-400 tracking-wide mt-1">
+                    Letters only — English or Bangla
+                  </p>
                 </div>
 
                 {/* Phone */}
@@ -277,16 +307,7 @@ export default function CheckoutPage() {
                   <input
                     type="tel"
                     value={shippingInfo.phone}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only English digits and Bangla digits
-                      if (/^[0-9০-৯]*$/.test(value) || value === "") {
-                        // Limit to 11 characters
-                        if (value.length <= 11) {
-                          setShippingInfo({ ...shippingInfo, phone: value });
-                        }
-                      }
-                    }}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
                     className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
                     placeholder="01XXXXXXXXX"
                     maxLength={11}
@@ -302,6 +323,30 @@ export default function CheckoutPage() {
                     {shippingInfo.phone.length === 11 && " ✓"}
                   </p>
                 </div>
+
+                {/* Guest Email — optional, only for guests */}
+                {!session && (
+                  <div>
+                    <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
+                      Email Address
+                      <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
+                        — optional, for order confirmation
+                      </span>
+                    </label>
+                    <input
+                      type="email"
+                      value={shippingInfo.guestEmail}
+                      onChange={(e) =>
+                        setShippingInfo({
+                          ...shippingInfo,
+                          guestEmail: e.target.value,
+                        })
+                      }
+                      className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                )}
 
                 {/* Address */}
                 <div>
@@ -337,7 +382,6 @@ export default function CheckoutPage() {
                             : "border-brand-300 hover:border-brand-500"
                         }`}
                       >
-                        {/* Custom checkbox */}
                         <div
                           className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                             selectedZone === zone.id
@@ -354,7 +398,6 @@ export default function CheckoutPage() {
                             />
                           )}
                         </div>
-
                         <div
                           className="flex-1"
                           onClick={() => setSelectedZone(zone.id)}
@@ -395,7 +438,7 @@ export default function CheckoutPage() {
                 transition={{ duration: 0.3 }}
                 className="flex flex-col gap-6"
               >
-                <h2 className="font-serif text-2xl text-brand-900 mb-2">
+                <h2 className="font-serif text-2xl text-brand-900">
                   Review Your Order
                 </h2>
 
@@ -433,7 +476,7 @@ export default function CheckoutPage() {
                     Payment
                   </p>
                   <p className="text-xs text-brand-800 tracking-wide">
-                    Cash on Delivery
+                    Cash on Delivery (COD)
                   </p>
                 </div>
 
@@ -441,10 +484,10 @@ export default function CheckoutPage() {
                 <div className="flex flex-col gap-3">
                   {items.map((item) => (
                     <div
-                      key={`${item.productId}-${item.variantId}`}
+                      key={`${item.productId}-${item.size}`}
                       className="flex items-center gap-4 py-3 border-b border-brand-200"
                     >
-                      <div className="w-14 h-16 bg-brand-200 flex items-center justify-center shrink-0">
+                      <div className="w-14 h-16 bg-brand-200 flex items-center justify-center shrink-0 overflow-hidden">
                         {item.image ? (
                           <img
                             src={item.image}
@@ -503,7 +546,7 @@ export default function CheckoutPage() {
             <div className="flex flex-col gap-3 mb-4 max-h-56 overflow-y-auto">
               {items.map((item) => (
                 <div
-                  key={`${item.productId}-${item.variantId}`}
+                  key={`${item.productId}-${item.size}`}
                   className="flex items-center justify-between gap-2"
                 >
                   <div className="flex items-center gap-2">

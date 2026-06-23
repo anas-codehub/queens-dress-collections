@@ -1,168 +1,183 @@
-import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
-import { sendAdminNewOrder, sendOrderConfirmation } from "@/lib/emails/send"
-import { sendCAPIEvent } from "@/lib/meta-capi"
-import { sendGAServerEvent } from "@/lib/google-mp"
+import { NextResponse }                          from "next/server"
+import { db }                                    from "@/lib/db"
+import { auth }                                  from "@/lib/auth"
+import { sendOrderConfirmation, sendAdminNewOrder } from "@/lib/emails/send"
+import { sendCAPIEvent }                         from "@/lib/meta-capi"
+
+function generateOrderNumber() {
+  const date   = new Date()
+  const year   = date.getFullYear()
+  const month  = String(date.getMonth() + 1).padStart(2, "0")
+  const random = Math.floor(Math.random() * 9000) + 1000
+  return `QDC-${year}${month}-${random}`
+}
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: "Please login to place an order" }, { status: 401 })
-  }
-
   try {
     const body = await req.json()
     const {
       items,
       shippingInfo,
-      paymentMethod,
+      paymentMethod = "COD",
       subtotal,
       shipping,
       total,
-      couponCode,
+      guestEmail,
     } = body
 
-    // Create address
-    const address = await db.address.create({
-      data: {
-        userId:    session.user.id,
-        name:      shippingInfo.name,
-        phone:     shippingInfo.phone,
-        line1:     shippingInfo.line1,
-        line2:     shippingInfo.line2 || null,
-        city:      shippingInfo.city,
-        district:  shippingInfo.district,
-        postalCode: shippingInfo.postalCode || null,
-        isDefault: false,
-      },
-    })
-
-    // Find coupon if provided
-    let couponId   = null
-    let discount   = 0
-
-    if (couponCode) {
-      const coupon = await db.coupon.findUnique({
-        where: { code: couponCode.toUpperCase() },
-      })
-
-      if (coupon && coupon.isActive) {
-        couponId = coupon.id
-        if (coupon.type === "PERCENT") {
-          discount = (subtotal * coupon.value) / 100
-          if (coupon.maxDiscount) {
-            discount = Math.min(discount, coupon.maxDiscount)
-          }
-        } else {
-          discount = coupon.value
-        }
-
-        // Increment usage count
-        await db.coupon.update({
-          where: { id: coupon.id },
-          data:  { usedCount: { increment: 1 } },
-        })
-      }
+    if (!items?.length) {
+      return NextResponse.json({ error: "No items in order" }, { status: 400 })
+    }
+    if (!shippingInfo?.name || !shippingInfo?.phone || !shippingInfo?.line1) {
+      return NextResponse.json({ error: "Shipping info required" }, { status: 400 })
     }
 
-    // Generate order number
-    const orderNumber = `QDC-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    // Check if logged in — optional
+    const session = await auth()
+    const userId  = session?.user?.id ?? null
+
+    // Verify all products exist
+const productIds  = items.map((i: any) => i.productId)
+const dbProducts  = await db.product.findMany({
+  where:  { id: { in: productIds } },
+  select: { id: true },
+})
+
+const foundIds    = dbProducts.map((p) => p.id)
+const missingIds  = productIds.filter((id: string) => !foundIds.includes(id))
+
+if (missingIds.length > 0) {
+  return NextResponse.json(
+    { error: "Some products in your cart no longer exist. Please refresh and try again." },
+    { status: 400 }
+  )
+}
+
+    const orderNumber = generateOrderNumber()
+
+    // Create or find address
+    const address = await db.address.create({
+      data: {
+        name:       shippingInfo.name,
+        phone:      shippingInfo.phone,
+        line1:      shippingInfo.line1,
+        line2:      shippingInfo.line2     ?? null,
+        city:       shippingInfo.city      ?? "",
+        district:   shippingInfo.district  ?? "",
+        postalCode: shippingInfo.postalCode ?? null,
+        isDefault:  false,
+        userId:     userId,
+      },
+    })
 
     // Create order
     const order = await db.order.create({
       data: {
         orderNumber,
-        userId:        session.user.id,
+        userId,
         addressId:     address.id,
-        couponId,
-        subtotal,
-        discount,
-        shipping,
-        total:         total - discount,
         status:        "PENDING",
-        paymentStatus: paymentMethod === "COD" ? "UNPAID" : "UNPAID",
+        paymentStatus: "UNPAID",
         paymentMethod,
+        subtotal,
+        shipping,
+        discount:      0,
+        total,
+        guestName:     userId ? null : shippingInfo.name,
+        guestPhone:    userId ? null : shippingInfo.phone,
+        guestEmail:    userId ? null : (guestEmail ?? null),
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,
             name:      item.name,
-            image:     item.image || null,
             price:     item.price,
             quantity:  item.quantity,
-            size:      item.size  || null,
-            color:     item.color || null,
+            size:      item.size  ?? null,
+            color:     item.color ?? null,
+            image:     item.image ?? null,
           })),
         },
       },
     })
 
+    // Send emails
+    const emailTo = guestEmail ?? session?.user?.email ?? null
 
-sendGAServerEvent({
-  name:          "purchase",
-  value:         order.total,
-  currency:      "BDT",
-  transactionId: order.orderNumber,
-  items:         items.map((i: any) => ({
-    item_id:   i.productId,
-    item_name: i.name,
-    price:     i.price,
-    quantity:  i.quantity,
-  })),
-})
+    if (emailTo) {
+      sendOrderConfirmation({
+        to:            emailTo,
+        orderNumber:   order.orderNumber,
+        customerName:  shippingInfo.name,
+        items:         items.map((item: any) => ({
+          name:     item.name,
+          quantity: item.quantity,
+          price:    item.price,
+          size:     item.size  ?? null,
+          color:    item.color ?? null,
+        })),
+        subtotal,
+        shipping,
+        total:         order.total,
+        address:       shippingInfo,
+        paymentMethod,
+      })
+    }
 
-    
+    sendAdminNewOrder({
+      orderNumber:   order.orderNumber,
+      customerName:  shippingInfo.name,
+      customerPhone: shippingInfo.phone,
+      total:         order.total,
+      itemCount:     items.length,
+      district:      shippingInfo.district ?? shippingInfo.city ?? "",
+      paymentMethod,
+    })
 
-    const user = await db.user.findUnique({ where: { id: session.user.id } })
-
+    // Server side tracking
     const ip        = req.headers.get("x-forwarded-for") ?? ""
-    const userAgent = req.headers.get("user-agent") ?? ""
-    const eventId   = `purchase-${order.orderNumber}`
-
+    const userAgent = req.headers.get("user-agent")       ?? ""
 
     sendCAPIEvent({
-  eventName:   "Purchase",
-  eventId,
-  email:       user?.email,
-  phone:       shippingInfo.phone,
-  ip,
-  userAgent,
-  value:       order.total,
-  currency:    "BDT",
-  orderId:     order.orderNumber,
-  contentIds:  items.map((i: any) => i.productId),
-})
-    sendOrderConfirmation({
-  to:            user?.email ?? shippingInfo.email,
-  orderNumber:   order.orderNumber,
-  customerName:  shippingInfo.name,
-  items:         items.map((item: any) => ({
-    name:     item.name,
-    quantity: item.quantity,
-    price:    item.price,
-    size:     item.size  ?? null,
-    color:    item.color ?? null,
-  })),
-  subtotal,
-  shipping,
-  total:         order.total,
-  address:       shippingInfo,
-  paymentMethod,
-})
+      eventName:   "Purchase",
+      eventId:     `purchase-${orderNumber}`,
+      email:       emailTo ?? undefined,
+      phone:       shippingInfo.phone,
+      ip,
+      userAgent,
+      value:       total,
+      currency:    "BDT",
+      orderId:     orderNumber,
+      contentIds:  items.map((i: any) => i.productId),
+    })
 
-sendAdminNewOrder({
-  orderNumber:   order.orderNumber,
-  customerName:  shippingInfo.name,
-  customerPhone: shippingInfo.phone,
-  total:         order.total,
-  itemCount:     items.length,
-  district:      shippingInfo.district,
-  paymentMethod,
-})
-
-    return NextResponse.json({ success: true, orderId: order.id })
+    return NextResponse.json({
+      success:     true,
+      orderId:     order.id,
+      orderNumber: order.orderNumber,
+    })
   } catch (e) {
-    console.error(e)
+    console.error("Order error:", e)
     return NextResponse.json({ error: "Failed to place order" }, { status: 500 })
+  }
+}
+
+export async function GET(req: Request) {
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const orders = await db.order.findMany({
+      where:   { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items:   true,
+        address: true,
+      },
+    })
+    return NextResponse.json(orders)
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 })
   }
 }

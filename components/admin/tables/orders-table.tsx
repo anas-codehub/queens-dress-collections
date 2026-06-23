@@ -14,7 +14,9 @@ type Order = {
   paymentStatus: string;
   paymentMethod: string;
   createdAt: Date;
-  user: { name: string | null; email: string };
+  user: { name: string | null; email: string } | null;
+  guestName: string | null;
+  guestEmail: string | null;
   address: { city: string; district: string };
   items: { id: string }[];
 };
@@ -145,13 +147,12 @@ export default function AdminOrdersTable({ orders }: { orders: Order[] }) {
                     {/* Customer */}
                     <td className="px-4 py-4">
                       <p className="text-xs text-brand-800 tracking-wide">
-                        {order.user.name ?? "—"}
+                        {order.user?.name ?? order.guestName ?? "—"}
                       </p>
                       <p className="text-[10px] text-brand-400 tracking-wide mt-0.5">
-                        {order.user.email}
+                        {order.user?.email ?? order.guestEmail ?? "—"}
                       </p>
                     </td>
-
                     {/* Location */}
                     <td className="px-4 py-4">
                       <p className="text-xs text-brand-600 tracking-wide whitespace-nowrap">
