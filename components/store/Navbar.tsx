@@ -109,7 +109,7 @@ export default function Navbar() {
 
               {/* Store link — desktop */}
               <Link
-                href="/store-locations"
+                href="/coming-soon"
                 className="hidden lg:flex items-center gap-1.5 text-[10px] text-brand-500 hover:text-brand-900 tracking-[0.12em] uppercase transition-colors group"
               >
                 <MapPin

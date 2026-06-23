@@ -58,14 +58,32 @@ export default function CheckoutPage() {
 
   function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Name validation — only letters (English + Bangla) and spaces
+    const nameRegex = /^[\u0980-\u09FF a-zA-Z\s]+$/;
     if (!shippingInfo.name.trim()) {
       toast.error("Please enter your name");
       return;
     }
+    if (!nameRegex.test(shippingInfo.name.trim())) {
+      toast.error("Name can only contain letters — no numbers or symbols");
+      return;
+    }
+
+    // Phone validation — only digits (English 0-9 or Bangla ০-৯), exactly 11
+    const phoneDigitsOnly = shippingInfo.phone
+      .replace(/[০-৯]/g, (d) => String("০১২৩৪৫৬৭৮৯".indexOf(d)))
+      .replace(/\D/g, "");
+
     if (!shippingInfo.phone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
+    if (phoneDigitsOnly.length !== 11) {
+      toast.error("Phone number must be exactly 11 digits");
+      return;
+    }
+
     if (!shippingInfo.address.trim()) {
       toast.error("Please enter your address");
       return;
@@ -74,6 +92,7 @@ export default function CheckoutPage() {
       toast.error("Please select your delivery zone");
       return;
     }
+
     setStep(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -235,9 +254,16 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     value={shippingInfo.name}
-                    onChange={(e) =>
-                      setShippingInfo({ ...shippingInfo, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only English letters, Bangla letters and spaces
+                      if (
+                        /^[\u0980-\u09FF a-zA-Z\s]*$/.test(value) ||
+                        value === ""
+                      ) {
+                        setShippingInfo({ ...shippingInfo, name: value });
+                      }
+                    }}
                     className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
                     placeholder="Your full name"
                   />
@@ -251,15 +277,30 @@ export default function CheckoutPage() {
                   <input
                     type="tel"
                     value={shippingInfo.phone}
-                    onChange={(e) =>
-                      setShippingInfo({
-                        ...shippingInfo,
-                        phone: e.target.value,
-                      })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only English digits and Bangla digits
+                      if (/^[0-9০-৯]*$/.test(value) || value === "") {
+                        // Limit to 11 characters
+                        if (value.length <= 11) {
+                          setShippingInfo({ ...shippingInfo, phone: value });
+                        }
+                      }
+                    }}
                     className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
                     placeholder="01XXXXXXXXX"
+                    maxLength={11}
                   />
+                  <p
+                    className={`text-[10px] tracking-wide mt-1 ${
+                      shippingInfo.phone.length === 11
+                        ? "text-green-600"
+                        : "text-brand-400"
+                    }`}
+                  >
+                    {shippingInfo.phone.length}/11 digits
+                    {shippingInfo.phone.length === 11 && " ✓"}
+                  </p>
                 </div>
 
                 {/* Address */}
