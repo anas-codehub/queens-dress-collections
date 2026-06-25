@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Edit, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Eye,
+  ToggleLeft,
+  ToggleRight,
+  Copy,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -225,6 +233,28 @@ export default function AdminProductsTable({
                       >
                         <Trash2 size={14} strokeWidth={1.5} />
                       </button>
+
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${process.env.NEXT_PUBLIC_APP_URL}/product/${product.slug}`,
+                          );
+                          toast.success("Product link copied!");
+                        }}
+                        className="p-1.5 text-brand-400 hover:text-brand-900 hover:bg-brand-100 transition-colors"
+                        title="Copy product link"
+                      >
+                        <Copy size={13} strokeWidth={1.5} />
+                      </button>
+
+                      <Link
+                        href={`/product/${product.slug}`}
+                        target="_blank"
+                        className="p-1.5 text-brand-400 hover:text-brand-900 hover:bg-brand-100 transition-colors"
+                        title="View product"
+                      >
+                        <ExternalLink size={13} strokeWidth={1.5} />
+                      </Link>
                     </div>
                   </td>
                 </tr>
