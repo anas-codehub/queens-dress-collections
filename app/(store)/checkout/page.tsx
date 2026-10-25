@@ -10,10 +10,10 @@ import Link from "next/link";
 import { trackEvent } from "@/components/shared/meta-pixel";
 import { trackGAEvent } from "@/components/shared/google-analytics";
 import { useSession } from "next-auth/react";
-import { resolve } from "node:path";
 
 const steps = ["Shipping", "Review"];
 
+// Labels must match ZONE_CHARGES in app/api/orders/route.ts exactly
 const DELIVERY_ZONES = [
   {
     id: "dhaka",
@@ -34,6 +34,18 @@ const DELIVERY_ZONES = [
     desc: "All other districts across Bangladesh",
   },
 ];
+
+const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
+
+function toEnglishDigits(value: string) {
+  return value
+    .split("")
+    .map((c) => {
+      const i = BANGLA_DIGITS.indexOf(c);
+      return i >= 0 ? String(i) : c;
+    })
+    .join("");
+}
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(0);
@@ -58,14 +70,14 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryCharge;
 
   function handleNameChange(value: string) {
-    // Only allow English + Bangla letters and spaces
-    if (/^[\u0980-\u09FF a-zA-Z\s]*$/.test(value) || value === "") {
+    // Only English + Bangla letters and spaces
+    if (/^[\u0980-\u09FF a-zA-Z\s]*$/.test(value)) {
       setShippingInfo({ ...shippingInfo, name: value });
     }
   }
 
   function handlePhoneChange(value: string) {
-    // Only allow English and Bangla digits, max 11
+    // Only English and Bangla digits, max 11
     if (/^[0-9০-৯]*$/.test(value) && value.length <= 11) {
       setShippingInfo({ ...shippingInfo, phone: value });
     }
@@ -79,8 +91,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    const nameRegex = /^[\u0980-\u09FF a-zA-Z\s]+$/;
-    if (!nameRegex.test(shippingInfo.name.trim())) {
+    if (!/^[\u0980-\u09FF a-zA-Z\s]+$/.test(shippingInfo.name.trim())) {
       toast.error("Name can only contain letters — no numbers or symbols");
       return;
     }
@@ -90,14 +101,10 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Convert Bangla digits to English for length check
-    const phoneDigitsOnly = shippingInfo.phone
-      .split("")
-      .map((c) =>
-        "০১২৩৪৫৬৭৮৯".includes(c) ? "০১২৩৪৫৬৭৮৯".indexOf(c).toString() : c,
-      )
-      .join("")
-      .replace(/\D/g, "");
+    const phoneDigitsOnly = toEnglishDigits(shippingInfo.phone).replace(
+      /\D/g,
+      "",
+    );
 
     if (phoneDigitsOnly.length !== 11) {
       toast.error("Phone number must be exactly 11 digits");
@@ -119,28 +126,27 @@ export default function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
+    if (loading) return; // block double clicks
     setLoading(true);
     try {
       const zone = DELIVERY_ZONES.find((z) => z.id === selectedZone);
 
+      // The server calculates prices and delivery charge itself.
+      // We only send what the customer chose.
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
           shippingInfo: {
-            name: shippingInfo.name,
+            name: shippingInfo.name.trim(),
             phone: shippingInfo.phone,
-            line1: shippingInfo.address,
+            line1: shippingInfo.address.trim(),
             line2: null,
             city: zone?.label ?? "",
             district: zone?.label ?? "",
             postalCode: null,
           },
-          paymentMethod: "COD",
-          subtotal,
-          shipping: deliveryCharge,
-          total,
           guestEmail: session ? null : shippingInfo.guestEmail || null,
         }),
       });
@@ -151,20 +157,31 @@ export default function CheckoutPage() {
         return;
       }
 
-      trackEvent("Purchase", {
-        value: total,
-        currency: "BDT",
-        eventID: `purchase-${data.orderNumber}`,
-        contents: items.map((item) => ({
-          id: item.productId,
-          quantity: item.quantity,
-        })),
-        content_type: "product",
-      });
+      // Use the total the server actually charged
+      const finalTotal = Number(data.total ?? total);
+
+      // Browser Purchase event. The 3rd argument is the event ID,
+      // which matches the server (CAPI) event so Meta counts it once.
+      trackEvent(
+        "Purchase",
+        {
+          value: finalTotal,
+          currency: "BDT",
+          content_type: "product",
+          content_ids: items.map((item) => item.productId),
+          contents: items.map((item) => ({
+            id: item.productId,
+            quantity: item.quantity,
+            item_price: item.price,
+          })),
+          num_items: items.reduce((sum, i) => sum + i.quantity, 0),
+        },
+        `purchase-${data.orderNumber}`,
+      );
 
       trackGAEvent("purchase", {
         transaction_id: data.orderNumber,
-        value: total,
+        value: finalTotal,
         currency: "BDT",
         items: items.map((item) => ({
           item_id: item.productId,
@@ -177,6 +194,7 @@ export default function CheckoutPage() {
       clearCart();
       toast.success("Order placed successfully! 🎉");
 
+      // Give the pixel time to send before the page changes
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (session) {
@@ -521,7 +539,8 @@ export default function CheckoutPage() {
                 <div className="flex gap-3 mt-2">
                   <button
                     onClick={() => setStep(0)}
-                    className="flex-1 text-[11px] text-brand-600 tracking-[0.15em] uppercase border border-brand-300 py-4 hover:border-brand-700 hover:text-brand-900 transition-colors"
+                    disabled={loading}
+                    className="flex-1 text-[11px] text-brand-600 tracking-[0.15em] uppercase border border-brand-300 py-4 hover:border-brand-700 hover:text-brand-900 transition-colors disabled:opacity-50"
                   >
                     Back
                   </button>

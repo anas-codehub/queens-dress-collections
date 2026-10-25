@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
@@ -13,18 +13,33 @@ declare global {
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
-export function trackEvent(event: string, data?: Record<string, any>) {
+export function trackEvent(
+  event: string,
+  data?: Record<string, any>,
+  eventId?: string,
+) {
   if (typeof window !== "undefined" && window.fbq) {
-    window.fbq("track", event, data);
+    if (eventId) {
+      window.fbq("track", event, data, { eventID: eventId });
+    } else {
+      window.fbq("track", event, data);
+    }
   }
 }
 
 export default function MetaPixel() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isFirstLoad = useRef(true);
 
-  // Track page views on route change
+  // Track PageView on route change only.
+  // The first PageView is fired by the init script below,
+  // so we skip it here to avoid counting it twice.
   useEffect(() => {
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
     if (typeof window !== "undefined" && window.fbq) {
       window.fbq("track", "PageView");
     }
