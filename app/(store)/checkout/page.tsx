@@ -10,6 +10,7 @@ import Link from "next/link";
 import { trackEvent } from "@/components/shared/meta-pixel";
 import { trackGAEvent } from "@/components/shared/google-analytics";
 import { useSession } from "next-auth/react";
+import { resolve } from "node:path";
 
 const steps = ["Shipping", "Review"];
 
@@ -176,7 +177,8 @@ export default function CheckoutPage() {
       clearCart();
       toast.success("Order placed successfully! 🎉");
 
-      // Logged in → go to orders, guest → go to success page
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       if (session) {
         router.push("/account/orders");
       } else {
