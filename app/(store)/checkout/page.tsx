@@ -60,7 +60,6 @@ export default function CheckoutPage() {
     name: "",
     phone: "",
     address: "",
-    guestEmail: "",
   });
 
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
@@ -147,7 +146,6 @@ export default function CheckoutPage() {
             district: zone?.label ?? "",
             postalCode: null,
           },
-          guestEmail: session ? null : shippingInfo.guestEmail || null,
         }),
       });
 
@@ -343,30 +341,6 @@ export default function CheckoutPage() {
                     {shippingInfo.phone.length === 11 && " ✓"}
                   </p>
                 </div>
-
-                {/* Guest Email — optional, only for guests */}
-                {!session && (
-                  <div>
-                    <label className="block text-[10px] text-brand-600 tracking-[0.15em] uppercase mb-1.5">
-                      Email Address
-                      <span className="ml-1 text-brand-400 normal-case tracking-normal font-normal">
-                        — optional, for order confirmation
-                      </span>
-                    </label>
-                    <input
-                      type="email"
-                      value={shippingInfo.guestEmail}
-                      onChange={(e) =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          guestEmail: e.target.value,
-                        })
-                      }
-                      className="w-full bg-brand-50 border border-brand-300 px-4 py-3 text-xs text-brand-900 placeholder:text-brand-400 outline-none focus:border-brand-700 transition-colors tracking-wide"
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                )}
 
                 {/* Address */}
                 <div>
